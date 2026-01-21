@@ -1,0 +1,85 @@
+package main
+
+import (
+	"strings"
+	"time"
+
+	"github.com/AnatoleLucet/loom-term/animate"
+	"github.com/AnatoleLucet/loom-term/core"
+)
+
+func triangle(t, max int) int {
+	period := 2 * max
+	v := t % period
+	if v > max {
+		return period - v
+	}
+	return v
+}
+
+func main() {
+	rt, _ := core.NewRuntime(core.RenderFullscreen)
+
+	t0, _ := core.NewTextElement(rt.RenderContext())
+	t1, _ := core.NewTextElement(rt.RenderContext())
+	t2, _ := core.NewTextElement(rt.RenderContext())
+	t3, _ := core.NewTextElement(rt.RenderContext())
+	t4, _ := core.NewTextElement(rt.RenderContext())
+	t5, _ := core.NewTextElement(rt.RenderContext())
+	t6, _ := core.NewTextElement(rt.RenderContext())
+	t7, _ := core.NewTextElement(rt.RenderContext())
+	t8, _ := core.NewTextElement(rt.RenderContext())
+	t9, _ := core.NewTextElement(rt.RenderContext())
+
+	rt.Root().SetWidth(100)
+	rt.Root().SetHeight(30)
+	rt.Root().SetFlexDirection("column")
+
+	t5.SetContent(strings.Repeat("l", 10))
+	t6.SetContent(strings.Repeat("l", 10))
+	t7.SetContent(strings.Repeat("l", 10))
+	t8.SetContent(strings.Repeat("l", 10))
+	t9.SetContent(strings.Repeat("l", 10))
+
+	rt.Root().AppendChild(t0)
+	rt.Root().AppendChild(t1)
+	rt.Root().AppendChild(t2)
+	rt.Root().AppendChild(t3)
+	rt.Root().AppendChild(t4)
+	rt.Root().AppendChild(t5)
+	rt.Root().AppendChild(t6)
+	rt.Root().AppendChild(t7)
+	rt.Root().AppendChild(t8)
+	rt.Root().AppendChild(t9)
+
+	err := rt.Render()
+	if err != nil {
+		panic(err)
+	}
+
+	i := 0
+	var longest time.Duration
+	for {
+		animate.Pace(func(time.Time) {
+			start := time.Now()
+			t0.SetContent(strings.Repeat(".", triangle(i, 50)))
+			t1.SetContent(strings.Repeat(".", triangle(i+10, 50)))
+			t2.SetContent(strings.Repeat(".", triangle(i+20, 50)))
+			t3.SetContent(strings.Repeat(".", triangle(i+30, 50)))
+			t4.SetContent(strings.Repeat(".", triangle(i+40, 50)))
+
+			err := rt.Render()
+			if err != nil {
+				panic(err)
+			}
+
+			elapsed := time.Since(start)
+			if elapsed > longest {
+				longest = elapsed
+			}
+		})
+		i++
+	}
+
+	select {}
+}

@@ -4,23 +4,25 @@ import (
 	"fmt"
 
 	"github.com/AnatoleLucet/loom"
-	"github.com/AnatoleLucet/loom-term/internal"
-	"github.com/AnatoleLucet/loom-term/opentui"
+	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/AnatoleLucet/loom-term/core/elements"
+	"github.com/AnatoleLucet/loom-term/internal/app"
 	. "github.com/AnatoleLucet/loom/components"
 )
 
-func Text(content string) loom.Node {
-	return &textNode{content}
+func Text(content string, styles ...loom.Node) loom.Node {
+	return &textNode{content, styles}
 }
 
-func BindText(fn func() string) loom.Node {
+func BindText(fn func() string, styles ...loom.Node) loom.Node {
 	return Bind(func() loom.Node {
-		return Text(fn())
+		return Text(fn(), styles...)
 	})
 }
 
 type textNode struct {
 	content string
+	styles  []loom.Node
 }
 
 func (n *textNode) ID() string {
@@ -28,61 +30,89 @@ func (n *textNode) ID() string {
 }
 
 func (n *textNode) Mount(slot *loom.Slot) error {
-	parent := slot.Parent().(*internal.Element)
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Text: %w", err)
+	}
 
-	self, err := internal.NewElement(parent)
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self, err := elements.NewTextElement(ctx.RenderContext())
 	if err != nil {
 		return err
 	}
 	slot.SetSelf(self)
-	parent.AppendChild(self)
+
+	err = ctx.DoSafely(func() error {
+		err = parent.AppendChild(self)
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Text: %w", err)
+	}
 
 	return n.Update(slot)
 }
 
 func (n *textNode) Update(slot *loom.Slot) error {
-	ctx, err := getAppContext()
+	ctx, err := app.GetContext()
 	if err != nil {
 		return fmt.Errorf("Text: %w", err)
 	}
 
-	self := slot.Self().(*internal.Element)
-	self.SetText(n.content)
-	self.SetTextColor(opentui.White)
-	self.SetPaint(n.Paint)
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
 
-	return ctx.renderer.Batch(func() error { return nil })
+	self := slot.Self().(*elements.TextElement)
+
+	err = ctx.DoSafely(func() error {
+		err = self.SetContent(n.content)
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Text: %w", err)
+	}
+
+	return slot.RenderChildren(n.styles...)
 }
 
 func (n *textNode) Unmount(slot *loom.Slot) error {
-	parent := slot.Parent().(*internal.Element)
-	self := slot.Self().(*internal.Element)
-
-	parent.RemoveChild(self)
-
-	return n.Update(slot)
-}
-
-func (n *textNode) Paint(node *internal.Element, buffer *opentui.Buffer) error {
-	layout := node.Layout().GetLayout()
-
-	// todo: helper method in tess Layout.AbsoluteLeft/Top()
-	left := layout.Left()
-	top := layout.Top()
-	for parent := node.Parent(); parent != nil; parent = parent.Parent() {
-		parentLayout := parent.Layout().GetLayout()
-		left += parentLayout.Left()
-		top += parentLayout.Top()
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Text: %w", err)
 	}
 
-	buffer.DrawText(
-		node.Text(),
-		uint32(left),
-		uint32(top),
-		node.TextColor(),
-		&opentui.Transparent,
-		0,
-	)
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self := slot.Self().(core.Element)
+
+	ctx.DoSafely(func() error {
+		err = parent.RemoveChild(self)
+		err = self.Destroy()
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Text: %w", err)
+	}
 
 	return nil
 }

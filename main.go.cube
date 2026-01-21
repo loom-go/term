@@ -1,0 +1,85 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/AnatoleLucet/loom"
+	"github.com/AnatoleLucet/loom-term/animate"
+	. "github.com/AnatoleLucet/loom-term/components"
+	"github.com/AnatoleLucet/loom-term/core"
+
+	. "github.com/AnatoleLucet/loom/components"
+	. "github.com/AnatoleLucet/loom/signals"
+)
+
+func triangle(t, max int) int {
+	period := 2 * max
+	v := t % period
+	if v > max {
+		return period - v
+	}
+	return v
+}
+
+func MyApp() loom.Node {
+	termWidth, _ := core.TerminalSize()
+	maxPos := termWidth - 2
+
+	frame, setFrame := Signal(0)
+	pos, setPos := Signal(0)
+
+	go func() {
+		animate.Run(animate.A{
+			Tick: func(progress float64) {
+				setFrame(frame() + 1)
+				setPos(triangle(frame(), maxPos))
+			},
+		})
+	}()
+
+	return Box(
+		Console(),
+
+		BindText(func() string { return fmt.Sprintf("Frame: %d, Position: %d, MaxPos: %d", frame(), pos(), maxPos) }),
+
+		// Progress bar container
+		Box(
+			// Moving bar - position based on frame count
+			Bind(func() loom.Node {
+				return Box(
+					Apply(Style{
+						MarginLeft:      pos(),
+						Width:           2,
+						Height:          "100%",
+						BackgroundColor: RGBA(100, 255, 100, 1),
+					}),
+				)
+			}),
+
+			Apply(Style{
+				Width:           "100%",
+				Height:          2,
+				BackgroundColor: RGBA(50, 50, 50, 1),
+				FlexDirection:   "row",
+				AlignItems:      "center",
+			}),
+		),
+
+		Apply(Style{
+			Width:         "100%",
+			FlexDirection: "column",
+		}),
+	)
+}
+
+func main() {
+	app := NewApp()
+
+	for err := range app.Run(RenderFullscreen, MyApp) {
+		// for err := range app.Run(RenderInline, MyApp) {
+		fmt.Printf("Error: %v\n", err)
+		app.Close()
+		os.Exit(1)
+	}
+}

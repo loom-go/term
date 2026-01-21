@@ -2,61 +2,83 @@ package components
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/AnatoleLucet/loom"
-	"github.com/AnatoleLucet/loom-term/opentui"
-	. "github.com/AnatoleLucet/loom/components"
-	. "github.com/AnatoleLucet/loom/signals"
+	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/AnatoleLucet/loom-term/internal/app"
 )
 
 func Console() loom.Node {
-	return Box(
-		fps(),
-
-		&Style{
-			Width:  "100%",
-			Height: "100%",
-
-			Position: "absolute",
-		},
-	)
+	return &consoleNode{}
 }
 
-func fps() loom.Node {
-	// ctx, err := getAppContext()
-	// if err != nil {
-	// 	return nil
-	// }
+type consoleNode struct{}
 
-	fps, setFps := Signal(0.0)
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 100)
-		defer ticker.Stop()
+func (n *consoleNode) ID() string {
+	return "term.Console"
+}
 
-		for range ticker.C {
-			// setFps(renderer.Debug().GetFPS())
-			setFps(0)
+func (n *consoleNode) Mount(slot *loom.Slot) error {
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Console: %w", err)
+	}
+
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self, err := core.NewConsoleElement(ctx.RenderContext())
+	if err != nil {
+		return fmt.Errorf("Console: %w", err)
+	}
+	slot.SetSelf(self)
+
+	err = ctx.DoSafely(func() error {
+		err = parent.AppendChild(self)
+		if err != nil {
+			return err
 		}
-	}()
 
-	return Box(
-		Text("fps: "),
-		Bind(func() loom.Node {
-			return Text(fmt.Sprintf("%.2f", fps()))
-		}),
+		return ctx.RequestRender()
+	})
 
-		&Style{
-			Width:  10,
-			Height: 1,
+	if err != nil {
+		return fmt.Errorf("Console: %w", err)
+	}
 
-			Right: 0,
-			Top:   0,
+	return nil
+}
 
-			Position: "absolute",
+func (n *consoleNode) Update(slot *loom.Slot) error {
+	return nil
+}
 
-			BackgroundColor: opentui.NewRGBA(0, 0, 0, 0.5),
-		},
-	)
+func (n *consoleNode) Unmount(slot *loom.Slot) error {
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Console: %w", err)
+	}
 
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self := slot.Self().(core.Element)
+
+	err = ctx.DoSafely(func() error {
+		err = parent.RemoveChild(self)
+		err = self.Destroy()
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Console: %w", err)
+	}
+
+	return nil
 }

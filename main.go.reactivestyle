@@ -1,0 +1,74 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"os"
+	"time"
+
+	"github.com/AnatoleLucet/loom"
+	. "github.com/AnatoleLucet/loom-term/components"
+	. "github.com/AnatoleLucet/loom/components"
+
+	. "github.com/AnatoleLucet/loom/signals"
+)
+
+func MyApp() loom.Node {
+	color, setColor := Signal("#000")
+	go func() {
+		for {
+			time.Sleep(time.Second / 60)
+			setColor(RGB(
+				uint8(rand.Intn(256)),
+				uint8(rand.Intn(256)),
+				uint8(rand.Intn(256)),
+			))
+		}
+	}()
+
+	visible, setVisible := Signal(true)
+
+	go func() {
+		for {
+			time.Sleep(time.Second / 2)
+			setVisible(!visible())
+		}
+	}()
+
+	return Box(
+		Console(),
+
+		BindText(color),
+		Text(
+			"double rainbow",
+			Apply(Style{BackgroundColor: RGB(0, 0, 255)}),
+			BindApply(func() Style {
+				return Style{BackgroundColor: color()}
+			}),
+		),
+
+		BindText(func() string { return fmt.Sprintf("Visible: %v", visible()) }),
+		Text(
+			"coucou",
+
+			Apply(Style{BackgroundColor: "#f00"}),
+
+			Show(visible, func() loom.Node {
+				return Apply(Style{BackgroundColor: "#00f"})
+			}),
+		),
+
+		Apply(Style{FlexDirection: "column"}),
+	)
+}
+
+func main() {
+	app := NewApp()
+
+	for err := range app.Run(RenderFullscreen, MyApp) {
+		// for err := range app.Run(RenderInline, MyApp) {
+		fmt.Printf("Error: %v\n", err)
+		app.Close()
+		os.Exit(1)
+	}
+}

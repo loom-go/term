@@ -1,0 +1,299 @@
+package main
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/AnatoleLucet/loom/signals"
+)
+
+type Unclonable[T any] struct{ value T }
+
+func (u *Unclonable[T]) Get() T  { return u.value }
+func (u *Unclonable[T]) Set(v T) { u.value = v }
+
+// Interface for RenderCtx's dirty list
+type pendingState interface {
+	drain()
+	isDirty() bool
+	setDirty(bool)
+}
+
+type RenderCtx struct {
+	renderMu   sync.Mutex
+	currentGen atomic.Uint64
+
+	pendingMu sync.Mutex
+	dirty     []pendingState
+}
+
+func (ctx *RenderCtx) CurrentGen() uint64 {
+	return ctx.currentGen.Load()
+}
+
+func (ctx *RenderCtx) NextGen() {
+	ctx.currentGen.Add(1)
+}
+
+func (ctx *RenderCtx) drainPending() {
+	// Take snapshot to avoid holding lock during drain (prevents deadlock with State.mu)
+	ctx.pendingMu.Lock()
+	toDrain := make([]pendingState, len(ctx.dirty))
+	copy(toDrain, ctx.dirty)
+	ctx.dirty = ctx.dirty[:0]
+	ctx.pendingMu.Unlock()
+
+	for _, s := range toDrain {
+		s.drain()
+	}
+}
+
+func (ctx *RenderCtx) markDirty(s pendingState) {
+	// Double-checked locking pattern
+	if s.isDirty() {
+		return
+	}
+	ctx.pendingMu.Lock()
+	if !s.isDirty() {
+		s.setDirty(true)
+		ctx.dirty = append(ctx.dirty, s)
+	}
+	ctx.pendingMu.Unlock()
+}
+
+type State[T any] struct {
+	renderCtx *RenderCtx
+
+	mu      sync.Mutex
+	value   T
+	pending []func(T) T
+
+	scheduled bool   // currently queued for render this frame
+	schedGen  uint64 // which generation we were scheduled for
+	inDirty   bool   // in the dirty list (has pending updates)
+}
+
+func NewState[T any](ctx *RenderCtx, initial T) *State[T] {
+	return &State[T]{
+		renderCtx: ctx,
+		value:     initial,
+	}
+}
+
+func (s *State[T]) Value() T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.value
+}
+
+func (s *State[T]) Update(updater func(T) T) {
+	s.mu.Lock()
+
+	// If scheduled for current frame, defer update to next frame
+	if s.scheduled && s.schedGen == s.renderCtx.CurrentGen() {
+		s.pending = append(s.pending, updater)
+		wasDirty := s.inDirty
+		s.inDirty = true
+		s.mu.Unlock()
+
+		if !wasDirty {
+			s.renderCtx.markDirty(s)
+		}
+		return
+	}
+	s.mu.Unlock()
+
+	// Try immediate update (non-blocking)
+	if s.renderCtx.renderMu.TryLock() {
+		s.mu.Lock()
+		s.value = updater(s.value)
+		s.mu.Unlock()
+		s.renderCtx.renderMu.Unlock()
+		return
+	}
+
+	// Blocked by render in progress, queue it
+	s.mu.Lock()
+	s.pending = append(s.pending, updater)
+	wasDirty := s.inDirty
+	s.inDirty = true
+	s.mu.Unlock()
+
+	if !wasDirty {
+		s.renderCtx.markDirty(s)
+	}
+}
+
+// implement pendingState
+func (s *State[T]) drain() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, fn := range s.pending {
+		s.value = fn(s.value)
+	}
+	s.pending = s.pending[:0]
+	s.inDirty = false
+}
+
+func (s *State[T]) isDirty() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.inDirty
+}
+
+func (s *State[T]) setDirty(v bool) {
+	s.mu.Lock()
+	s.inDirty = v
+	s.mu.Unlock()
+}
+
+func (s *State[T]) MarkScheduled(gen uint64) {
+	s.mu.Lock()
+	s.scheduled = true
+	s.schedGen = gen
+	s.mu.Unlock()
+}
+
+func (s *State[T]) ClearScheduled() {
+	s.mu.Lock()
+	s.scheduled = false
+	s.mu.Unlock()
+}
+
+type TextElem struct {
+	content *State[Unclonable[string]]
+}
+
+func NewTextElem(ctx *RenderCtx) *TextElem {
+	return &TextElem{
+		content: NewState(ctx, Unclonable[string]{}),
+	}
+}
+
+func (e *TextElem) SetContent(v string) {
+	e.content.Update(func(obj Unclonable[string]) Unclonable[string] {
+		obj.Set(v)
+		return obj
+	})
+}
+
+func (e *TextElem) Paint() {
+	v := e.content.Value()
+	fmt.Println("Text:", v.Get())
+}
+
+type Renderer struct {
+	ctx       RenderCtx
+	mu        sync.Mutex
+	scheduled bool
+	elements  []*TextElem
+	seen      map[*TextElem]struct{}
+}
+
+func NewRenderer() *Renderer {
+	return &Renderer{
+		seen: make(map[*TextElem]struct{}),
+	}
+}
+
+func (r *Renderer) Schedule(element *TextElem) {
+	r.mu.Lock()
+
+	// Deduplicate: only schedule each element once per frame
+	if _, exists := r.seen[element]; exists {
+		r.mu.Unlock()
+		return
+	}
+	r.seen[element] = struct{}{}
+	r.elements = append(r.elements, element)
+
+	// Mark element as frozen for current generation
+	gen := r.ctx.CurrentGen()
+	element.content.MarkScheduled(gen)
+
+	if r.scheduled {
+		r.mu.Unlock()
+		return
+	}
+	r.scheduled = true
+	r.mu.Unlock()
+
+	signals.OnRenderSettled(func() {
+		// Phase 1: Apply updates that were queued during previous frame
+		r.ctx.drainPending()
+
+		// Phase 2: Render (exclusive access)
+		r.ctx.renderMu.Lock()
+		fmt.Println("---- Rendering Frame", r.ctx.CurrentGen(), "----")
+		time.Sleep(50 * time.Millisecond) // Simulate render time
+
+		for _, el := range r.elements {
+			el.Paint()
+		}
+
+		// Unfreeze elements for next frame
+		for _, el := range r.elements {
+			el.content.ClearScheduled()
+		}
+
+		r.ctx.renderMu.Unlock()
+
+		// Phase 3: Advance generation and reset state for next frame
+		r.ctx.NextGen()
+
+		r.mu.Lock()
+		r.elements = nil
+		r.seen = make(map[*TextElem]struct{})
+		r.scheduled = false
+		r.mu.Unlock()
+	})
+}
+
+func main() {
+	renderer := NewRenderer()
+	t1 := NewTextElem(&renderer.ctx)
+	t2 := NewTextElem(&renderer.ctx)
+
+	val1, setVal1 := signals.Signal("")
+	val2, setVal2 := signals.Signal("")
+
+	t1init := false
+	signals.RenderEffect(func() {
+		t1.SetContent(val1())
+		if t1init {
+			renderer.Schedule(t1)
+		}
+		t1init = true
+	})
+
+	t2init := false
+	signals.RenderEffect(func() {
+		t2.SetContent(val2())
+		if t2init {
+			renderer.Schedule(t2)
+		}
+		t2init = true
+	})
+
+	// Basic test
+	setVal1("Hello")
+	setVal2("World")
+
+	// Batch test
+	signals.Batch(func() {
+		setVal1("New Hello")
+		setVal2("New World")
+	})
+
+	// Race condition test:
+	// "Final Hello" schedules a render, then "rendered" tries to overwrite.
+	// With protection, "Final Hello" renders in Frame N, "rendered" in Frame N+1
+	go setVal1("Final Hello")
+	time.Sleep(10 * time.Millisecond) // Ensure goroutine runs first
+	setVal1("rendered")
+
+	time.Sleep(200 * time.Millisecond)
+}

@@ -2,11 +2,11 @@ package components
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/AnatoleLucet/loom"
-	"github.com/AnatoleLucet/loom-term/internal"
-	"github.com/AnatoleLucet/loom-term/opentui"
+	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/AnatoleLucet/loom-term/core/elements"
+	"github.com/AnatoleLucet/loom-term/internal/app"
 )
 
 func Box(children ...loom.Node) loom.Node {
@@ -24,60 +24,75 @@ func (n *boxNode) ID() string {
 }
 
 func (n *boxNode) Mount(slot *loom.Slot) error {
-	parent := slot.Parent().(*internal.Element)
-
-	self, err := internal.NewElement(parent)
+	ctx, err := app.GetContext()
 	if err != nil {
-		return err
+		return fmt.Errorf("Box: %w", err)
+	}
+
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self, err := elements.NewBoxElement(ctx.RenderContext())
+	if err != nil {
+		return fmt.Errorf("Box: %w", err)
 	}
 	slot.SetSelf(self)
-	parent.AppendChild(self)
 
-	self.SetPaint(n.Paint)
+	err = ctx.DoSafely(func() error {
+		err = parent.AppendChild(self)
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Box: %w", err)
+	}
 
 	return n.Update(slot)
 }
 
 func (n *boxNode) Update(slot *loom.Slot) error {
-	ctx, err := getAppContext()
+	ctx, err := app.GetContext()
 	if err != nil {
 		return fmt.Errorf("Box: %w", err)
 	}
 
-	return ctx.renderer.Batch(func() error {
-		return slot.RenderChildren(n.children...)
-	})
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	return slot.RenderChildren(n.children...)
+
 }
 
 func (n *boxNode) Unmount(slot *loom.Slot) error {
-	parent := slot.Parent().(*internal.Element)
-	self := slot.Self().(*internal.Element)
-
-	parent.RemoveChild(self)
-
-	return n.Update(slot)
-}
-
-func (n *boxNode) Paint(node *internal.Element, buffer *opentui.Buffer) error {
-	layout := node.Layout().GetLayout()
-
-	// Calculate absolute position by walking up the tree
-	left := layout.Left()
-	top := layout.Top()
-	for parent := node.Parent(); parent != nil; parent = parent.Parent() {
-		parentLayout := parent.Layout().GetLayout()
-		left += parentLayout.Left()
-		top += parentLayout.Top()
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Box: %w", err)
 	}
 
-	// Use rounding instead of truncation for consistent sub-pixel positioning
-	buffer.FillRect(
-		uint32(math.Round(float64(left))),
-		uint32(math.Round(float64(top))),
-		uint32(math.Round(float64(layout.Width()))),
-		uint32(math.Round(float64(layout.Height()))),
-		node.BackgroundColor(),
-	)
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	parent := slot.Parent().(core.Element)
+	self := slot.Self().(core.Element)
+
+	err = ctx.DoSafely(func() error {
+		err = parent.RemoveChild(self)
+		err = self.Destroy()
+		if err != nil {
+			return err
+		}
+
+		return ctx.RequestRender()
+	})
+
+	if err != nil {
+		return fmt.Errorf("Box: %w", err)
+	}
 
 	return nil
 }

@@ -1,0 +1,61 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/AnatoleLucet/loom-term/animate"
+	"github.com/AnatoleLucet/loom-term/core"
+)
+
+func triangle(t, max int) int {
+	period := 2 * max
+	v := t % period
+	if v > max {
+		return period - v
+	}
+	return v
+}
+
+func main() {
+	width, height := core.TerminalSize()
+
+	rt, _ := core.NewRuntime(core.RenderFullscreen)
+	rt.Root().SetWidth(width)
+	rt.Root().SetHeight(height)
+
+	console, _ := core.NewConsoleElement(rt.RenderContext())
+	rt.Root().AppendChild(console)
+
+	t0, _ := core.NewTextElement(rt.RenderContext())
+	rt.Root().AppendChild(t0)
+
+	err := rt.Render()
+	if err != nil {
+		panic(err)
+	}
+
+	i := 0
+
+	go func(i *int) {
+		for {
+			// time.Sleep(time.Second / 240)
+			time.Sleep(time.Second / 10)
+			core.LogInfo(fmt.Sprintf("Frame %d", *i))
+		}
+	}(&i)
+
+	for {
+		animate.Pace(func(time.Time) {
+			t0.SetContent(strings.Repeat(".", triangle(i, 50)))
+			err := rt.Render()
+			if err != nil {
+				panic(err)
+			}
+		})
+		i++
+	}
+
+	select {}
+}

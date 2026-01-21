@@ -1,0 +1,48 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/AnatoleLucet/loom"
+	"github.com/AnatoleLucet/loom-term/animate"
+	. "github.com/AnatoleLucet/loom-term/components"
+
+	. "github.com/AnatoleLucet/loom/signals"
+)
+
+func MyApp() loom.Node {
+	frame, setFrame := Signal(0)
+
+	go func() {
+		for {
+			animate.Pace(func(time.Time) {
+				setFrame(frame() + 1)
+			})
+		}
+	}()
+
+	return Box(
+		Console(),
+
+		BindText(func() string { return fmt.Sprintf("frame: %d", frame()) }),
+
+		Apply(Style{
+			Width:        "100%",
+			Height:       "100%",
+			PaddingRight: "10%",
+		}),
+	)
+}
+
+func main() {
+	app := NewApp()
+
+	for err := range app.Run(RenderFullscreen, MyApp) {
+		// for err := range app.Run(RenderInline, MyApp) {
+		fmt.Printf("Error: %v\n", err)
+		app.Close()
+		os.Exit(1)
+	}
+}
