@@ -13,7 +13,3 @@ require (
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 )
-
-replace github.com/AnatoleLucet/go-opentui => ../../../go-opentui
-
-replace github.com/AnatoleLucet/tess => ../../../tess

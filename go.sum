@@ -2,6 +2,8 @@ github.com/AnatoleLucet/go-opentui v0.0.0-20260124130901-d983e8d33f6c h1:we9bgbB
 github.com/AnatoleLucet/go-opentui v0.0.0-20260124130901-d983e8d33f6c/go.mod h1:JxO6qbrbNsTT3nPTPrnhhQEA1fKnEA8tNCaujsoHyPI=
 github.com/AnatoleLucet/go-opentui v0.0.0-20260125104354-0534a58b4760 h1:i7jR73X88WgDEY27MttBNkkoT/VvrIxCNOucvmNT2m8=
 github.com/AnatoleLucet/go-opentui v0.0.0-20260125104354-0534a58b4760/go.mod h1:JxO6qbrbNsTT3nPTPrnhhQEA1fKnEA8tNCaujsoHyPI=
+github.com/AnatoleLucet/go-opentui v0.0.0-20260209134342-7a88a7c05506 h1:Z0kORynxXfvLY3bbJiwe2HOgnRx+fc8v5msmgzA7NrU=
+github.com/AnatoleLucet/go-opentui v0.0.0-20260209134342-7a88a7c05506/go.mod h1:JxO6qbrbNsTT3nPTPrnhhQEA1fKnEA8tNCaujsoHyPI=
 github.com/AnatoleLucet/tess v0.0.0-20251124114737-2c8f7957c103 h1:zYy0+0H4TcLGvGRSmlpQws3gW7mnx8wlFmVUNyqYUOY=
 github.com/AnatoleLucet/tess v0.0.0-20251124114737-2c8f7957c103/go.mod h1:HqZNGWSj4mPsukwZHs8RMyC2wpgOQ+ZAtr1B8IYxwUg=
 github.com/AnatoleLucet/tess v0.0.0-20260119143610-037c902ed063 h1:9NakSWbOVI3tPgpPpQIqtkTGJT8KRMMxPkWm4osbvZM=
@@ -22,6 +24,8 @@ github.com/AnatoleLucet/tess v0.0.0-20260125173952-b98cc75823d1 h1:e3C6NL36UgQBx
 github.com/AnatoleLucet/tess v0.0.0-20260125173952-b98cc75823d1/go.mod h1:HqZNGWSj4mPsukwZHs8RMyC2wpgOQ+ZAtr1B8IYxwUg=
 github.com/AnatoleLucet/tess v0.0.0-20260127122718-a78a630adc44 h1:Dn396BIc/eb/CtC6hEdANMznq82fK2CUPJj6hy4bOZU=
 github.com/AnatoleLucet/tess v0.0.0-20260127122718-a78a630adc44/go.mod h1:HqZNGWSj4mPsukwZHs8RMyC2wpgOQ+ZAtr1B8IYxwUg=
+github.com/AnatoleLucet/tess v0.0.0-20260203151116-72dc74b8dcb6 h1:+en+1JvoOcZUnIlSr+7RQ6a8uodl2v8FBGhBXMiPXUg=
+github.com/AnatoleLucet/tess v0.0.0-20260203151116-72dc74b8dcb6/go.mod h1:HqZNGWSj4mPsukwZHs8RMyC2wpgOQ+ZAtr1B8IYxwUg=
 github.com/clipperhouse/uax29/v2 v2.2.0 h1:ChwIKnQN3kcZteTXMgb1wztSgaU+ZemkgWdohwgs8tY=
 github.com/clipperhouse/uax29/v2 v2.2.0/go.mod h1:EFJ2TJMRUaplDxHKj1qAEhCtQPW2tJSwu5BF98AuoVM=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
