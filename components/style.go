@@ -38,6 +38,14 @@ type Style struct {
 	MarginLeft       any // 10 | "100pt" | "50%"
 	MarginRight      any // 10 | "100pt" | "50%"
 
+	BorderAll        string // "single" | "double" | "rounded"  | "heavy"
+	BorderVertical   string // "single" | "double" | "rounded"  | "heavy"
+	BorderHorizontal string // "single" | "double" | "rounded"  | "heavy"
+	BorderTop        string // "single" | "double" | "rounded"  | "heavy"
+	BorderBottom     string // "single" | "double" | "rounded"  | "heavy"
+	BorderLeft       string // "single" | "double" | "rounded"  | "heavy"
+	BorderRight      string // "single" | "double" | "rounded"  | "heavy"
+
 	Display string // "none" | "flex" | "contents"
 
 	AlignSelf      string // "start" | "end" | "center" | "stretch" | "baseline"
@@ -55,10 +63,17 @@ type Style struct {
 
 	Overflow string // "visible" | "hidden"
 
-	BorderStyle string // "single" | "double" | "rounded"  | "heavy"
+	BorderColor string // "transparent" | "#RGB" | "#RRGGBBAA"
 
-	Color           string // "transparent" | "#RGB" | "#RRGGBBAA"
 	BackgroundColor string // "transparent" | "#RGB" | "#RRGGBBAA"
+
+	Color          string // "transparent" | "#RGB" | "#RRGGBBAA"
+	DropColor      string // "transparent" | "#RGB" | "#RRGGBBAA"
+	FontWeight     string // "normal" | "bold"
+	FontStyle      string // "normal" | "italic"
+	TextDecoration string // "none" | "underline" | "line-through"
+	TextWrap       string // "none" | "word" | "char"
+
 }
 
 // helper for "<value>pt"

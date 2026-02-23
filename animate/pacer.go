@@ -44,7 +44,7 @@ func (p *FramePacer) loop() {
 	ticker := time.NewTicker(time.Second / p.rate)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for now := range ticker.C {
 		p.mu.Lock()
 		reqs := p.requests
 		p.requests = nil
@@ -55,7 +55,6 @@ func (p *FramePacer) loop() {
 		}
 
 		signals.Batch(func() {
-			now := time.Now()
 			for _, req := range reqs {
 				req.tick(now)
 				close(req.done)

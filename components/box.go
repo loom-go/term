@@ -33,24 +33,14 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 	defer ctx.PopRenderHold()
 
 	parent := slot.Parent().(core.Element)
-	self, err := elements.NewBoxElement(ctx.RenderContext())
+	self, err := elements.NewBoxElement()
 	if err != nil {
 		return fmt.Errorf("Box: %w", err)
 	}
 	slot.SetSelf(self)
 
-	err = ctx.DoSafely(func() error {
-		err = parent.AppendChild(self)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Box: %w", err)
-	}
+	parent.AppendChild(self)
+	ctx.ScheduleRender()
 
 	return n.Update(slot)
 }
@@ -58,7 +48,7 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 func (n *boxNode) Update(slot *loom.Slot) error {
 	ctx, err := app.GetContext()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return err
 	}
 
 	ctx.PushRenderHold()
@@ -77,22 +67,10 @@ func (n *boxNode) Unmount(slot *loom.Slot) error {
 	ctx.PushRenderHold()
 	defer ctx.PopRenderHold()
 
-	parent := slot.Parent().(core.Element)
 	self := slot.Self().(core.Element)
 
-	err = ctx.DoSafely(func() error {
-		err = parent.RemoveChild(self)
-		err = self.Destroy()
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Box: %w", err)
-	}
+	self.Destroy()
+	ctx.ScheduleRender()
 
 	return nil
 }

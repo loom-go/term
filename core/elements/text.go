@@ -1,178 +1,426 @@
 package elements
 
 import (
-	"errors"
+	"fmt"
+	"iter"
 	"math"
+	"slices"
+	"strings"
+
+	"github.com/AnatoleLucet/loom-term/core/gfx"
 
 	"github.com/AnatoleLucet/go-opentui"
-	"github.com/AnatoleLucet/loom-term/core/types"
 	"github.com/AnatoleLucet/tess"
 )
 
-type TextElement struct {
-	*BaseElement
+var wrapModes = map[string]uint8{
+	"":       opentui.WrapModeNone,
+	"none":   opentui.WrapModeNone,
+	"norwap": opentui.WrapModeNone,
 
-	textBuffer     *opentui.TextBuffer
-	textBufferView *opentui.TextBufferView
+	"word":   opentui.WrapModeWord,
+	"normal": opentui.WrapModeWord,
+
+	"all":  opentui.WrapModeChar,
+	"char": opentui.WrapModeChar,
 }
 
-func NewTextElement(ctx types.RenderContext) (*TextElement, error) {
-	base, err := NewElement(ctx)
+type TextElement struct {
+	// todo: dont use base element. it's carying a lot more than needed
+	*BaseElement
+
+	rootText *TextElement
+
+	chunk *TextChunk
+
+	textStyle      *opentui.SyntaxStyle
+	textBuffer     *opentui.TextBuffer
+	textBufferView *opentui.TextBufferView
+
+	children []*TextElement
+}
+
+func NewTextElement() (text *TextElement, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Text: %w: %v", ErrFailedToInitializeElement, err)
+		}
+	}()
+
+	base, err := NewBaseElement()
 	if err != nil {
 		return nil, err
 	}
 
-	tb := opentui.NewTextBuffer(0)
-	if tb == nil {
-		return nil, errors.New("failed to create text buffer") // todo: better error
-	}
-	tb.SetDefaultFg(opentui.White)
-	tb.SetDefaultBg(opentui.Transparent)
-
-	view := opentui.NewTextBufferView(tb)
-	if view == nil {
-		tb.Close()
-		return nil, errors.New("failed to create text buffer view") // todo: better error
-	}
-	view.SetWrapMode(opentui.WrapModeWord)
-
-	e := &TextElement{
+	text = &TextElement{
 		BaseElement: base,
-
-		textBuffer:     tb,
-		textBufferView: view,
+		chunk:       NewTextChunk(),
 	}
+	base.self = text
 
-	e.XYZ().SetMeasureFunc(e.measureFunc)
-	e.SetFlexShrink("0")
-	e.SetFlexGrow("0")
+	text.textBuffer = opentui.NewTextBuffer(0)
+	text.textBufferView = opentui.NewTextBufferView(text.textBuffer)
+	text.textStyle = opentui.NewSyntaxStyle()
+	text.textBuffer.SetSyntaxStyle(text.textStyle)
 
-	return e, nil
+	text.xyz().SetMeasureFunc(text.measureFunc)
+	text.SetFlexGrow("0")
+	text.SetFlexShrink("0")
+	text.SetAlignSelf("start")
+
+	text.OnDestroy(func() {
+		// note: text view must be closed before the buffer
+		// https://github.com/anomalyco/opentui/blob/5958ce8060af43c0d4300cfbddeaf32d67bfb94c/packages/core/src/zig/text-buffer-view.zig#L208
+		text.textBufferView.Close()
+		text.textBuffer.Close()
+		text.textStyle.Close()
+	})
+
+	return text, nil
 }
 
-func (t *TextElement) SetContent(content string) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if err := t.guardUpdate(); err != nil {
-		return err
+func (t *TextElement) Children() iter.Seq[Element] {
+	return func(yield func(Element) bool) {
+		for _, child := range t.children {
+			if !yield(child) {
+				return
+			}
+		}
 	}
-
-	t.textBuffer.Reset()
-	t.textBuffer.Append(content)
-	t.xyz.MarkDirty()
-
-	return nil
 }
 
-func (t *TextElement) SetForegroundColor(color string) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t *TextElement) AppendChild(child Element) {
+	t.scheduleUpdate(func() error {
+		if c, ok := child.(*TextElement); ok {
+			t.mu.Lock()
+			defer t.mu.Unlock()
 
-	if err := t.guardUpdate(); err != nil {
-		return err
-	}
+			if err := guardDestroyed(t.ctx); err != nil {
+				return err
+			}
 
-	c, err := toOpenTUIColor(color)
-	if err != nil {
-		return err
-	}
+			if c.parentUnsafe() != nil {
+				return fmt.Errorf("%w: child already has a parent", ErrFailedToAppendChild)
+			}
 
-	t.textBuffer.SetDefaultBg(c)
-	return nil
-}
+			t.children = append(t.children, c)
 
-func (t *TextElement) UnsetForegroundColor() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+			c.rootText = t.rootTextElement()
+			c.setParentUnsafe(t)
+			c.setContextUnsafe(t.rdrctx)
 
-	if err := t.guardUpdate(); err != nil {
-		return err
-	}
+			t.update()
+		}
 
-	t.textBuffer.SetDefaultFg(opentui.White)
-	return nil
-}
-
-func (t *TextElement) SetBackgroundColor(color string) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if err := t.guardUpdate(); err != nil {
-		return err
-	}
-
-	c, err := toOpenTUIColor(color)
-	if err != nil {
-		return err
-	}
-
-	t.textBuffer.SetDefaultBg(c)
-	return nil
-}
-
-func (t *TextElement) UnsetBackgroundColor() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if err := t.guardUpdate(); err != nil {
-		return err
-	}
-
-	t.textBuffer.SetDefaultBg(opentui.Transparent)
-	return nil
-}
-
-func (e *TextElement) Paint(buffer *opentui.Buffer, x, y float32) error {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	if err := e.guardPaint(); err != nil {
-		return err
-	}
-
-	layout := e.Layout()
-	width := layout.Width()
-	height := layout.Height()
-
-	e.textBufferView.SetViewportSize(uint32(width), uint32(height))
-
-	err := buffer.DrawTextBufferView(e.textBufferView, int32(x), int32(y))
-	if err != nil {
-		return err
-	}
-
-	if err := e.paint(buffer, x, y); err != nil {
-		return err
-	}
-
-	return e.paintChildren(buffer, x, y)
-}
-
-func (t *TextElement) Destroy() error {
-	t.mu.Lock()
-
-	if t.destroyed {
-		t.mu.Unlock()
 		return nil
+	})
+}
+
+func (t *TextElement) RemoveChild(child Element) {
+	t.scheduleUpdate(func() error {
+		if c, ok := child.(*TextElement); ok {
+			t.mu.Lock()
+			defer t.mu.Unlock()
+
+			if err := guardDestroyed(t.ctx); err != nil {
+				return err
+			}
+
+			i := slices.Index(t.children, c)
+			if i == -1 {
+				return fmt.Errorf("%w: child not found", ErrFailedToRemoveChild)
+			}
+
+			t.children = slices.Delete(t.children, i, i+1)
+
+			c.rootText = nil
+			c.setParentUnsafe(nil)
+			c.setContextUnsafe(nil)
+
+			t.update()
+		}
+
+		return nil
+	})
+}
+
+func (t *TextElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) error {
+	self := t.Self()
+	rect := t.rect(container)
+
+	render := gfx.NewCommand(gfx.CmdRender, self).WithRect(rect).WithCallback(func() error {
+		return t.rdrctx.AddToHitGrid(self, rect)
+	})
+	cb.Add(render)
+
+	return nil
+}
+
+func (t *TextElement) Render(buffer *opentui.Buffer, rect gfx.Rect) error {
+	return buffer.DrawTextBufferView(t.textBufferView, int32(rect.X), int32(rect.Y))
+}
+
+func (t *TextElement) Text() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if err := guardDestroyed(t.ctx); err != nil {
+		return ""
 	}
 
-	// beffer view must be closed before the buffer
-	// https://github.com/anomalyco/opentui/blob/5958ce8060af43c0d4300cfbddeaf32d67bfb94c/packages/core/src/zig/text-buffer-view.zig#L208
-	bv := t.textBufferView
-	if bv != nil {
-		bv.Close()
-		t.textBufferView = nil
+	return t.text()
+}
+
+func (t *TextElement) SetText(text string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetText(text)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetText() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetText()
+		t.update()
+		return nil
+	})
+}
+
+// normal | bold
+func (t *TextElement) SetFontWeight(weight string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetFontWeight(weight)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetFontWeight() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetFontWeight()
+		t.update()
+		return nil
+	})
+}
+
+// normal | italic
+func (t *TextElement) SetFontStyle(style string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetFontStyle(style)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetFontStyle() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetFontStyle()
+		t.update()
+		return nil
+	})
+}
+
+// none | underline | strikethrough
+func (t *TextElement) SetTextDecoration(decoration string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetTextDecoration(decoration)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetTextDecoration() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetTextDecoration()
+		t.update()
+		return nil
+	})
+}
+
+// none | word | all
+func (t *TextElement) SetWrap(mode string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		wrapMode, ok := wrapModes[mode]
+		if !ok {
+			return nil
+		}
+
+		t.textBufferView.SetWrapMode(wrapMode)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetWrap() {
+	t.SetWrap("none")
+}
+
+func (t *TextElement) SetTextForeground(color string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetTextForeground(color)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetTextForeground() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetTextForeground()
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) SetTextBackground(color string) {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.SetTextBackground(color)
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) UnsetTextBackground() {
+	t.scheduleUpdate(func() error {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if err := guardDestroyed(t.ctx); err != nil {
+			return err
+		}
+
+		t.chunk.UnsetTextBackground()
+		t.update()
+		return nil
+	})
+}
+
+func (t *TextElement) rootTextElement() *TextElement {
+	if t.rootText != nil {
+		return t.rootText
 	}
 
-	tb := t.textBuffer
-	if tb != nil {
-		tb.Close()
-		t.textBuffer = nil
+	return t
+}
+
+func (t *TextElement) text() string {
+	var sb strings.Builder
+	sb.WriteString(t.chunk.Text())
+
+	for _, child := range t.children {
+		sb.WriteString(child.text())
 	}
 
-	t.mu.Unlock()
-	return t.BaseElement.Destroy()
+	return sb.String()
+}
+
+func (t *TextElement) update() {
+	root := t.rootTextElement()
+
+	root.xyz().MarkDirty()
+	root.textBuffer.Reset()
+	root.textBuffer.SetStyledText(t.chunks(root))
+}
+
+func (t *TextElement) chunks(parent *TextElement) []opentui.StyledChunk {
+	chunks := []opentui.StyledChunk{}
+	if t.chunk.Text() != "" {
+		chunks = append(chunks, t.chunk.StyledChunk(parent.chunk))
+	}
+
+	for _, child := range t.children {
+		for _, chunk := range child.chunks(t) {
+			if chunk.Text != "" {
+				chunks = append(chunks, chunk)
+			}
+		}
+	}
+
+	return chunks
 }
 
 // source: https://github.com/anomalyco/opentui/blob/9092e7c366ee04ceec208dddc74bd49efc632d2f/packages/core/src/renderables/TextBufferRenderable.ts#L376-L416

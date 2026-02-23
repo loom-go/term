@@ -1,10 +1,8 @@
 package components
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"io"
+	"sync/atomic"
 
 	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term/core"
@@ -12,14 +10,10 @@ import (
 	. "github.com/AnatoleLucet/loom/components"
 )
 
-func newId() (string, error) {
-	b := make([]byte, 16)
-	_, err := io.ReadFull(rand.Reader, b)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate random ID: %w", err) // todo: error
-	}
+var nextID atomic.Uint32
 
-	return base64.RawURLEncoding.EncodeToString(b), nil
+func newID() uint32 {
+	return nextID.Add(1)
 }
 
 type applyNode struct {
@@ -58,10 +52,7 @@ func (s *applyNode) Mount(slot *loom.Slot) error {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	id, err := newId()
-	if err != nil {
-		return err
-	}
+	id := newID()
 	slot.SetSelf(id)
 
 	parent := slot.Parent().(core.Element)
@@ -69,18 +60,8 @@ func (s *applyNode) Mount(slot *loom.Slot) error {
 	stack := getStyleStack(parent)
 	stack.Push(id, s.style)
 
-	err = ctx.DoSafely(func() error {
-		err = applyStyle(parent, &s.style)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Apply (style): %w", err)
-	}
+	applyStyle(parent, &s.style)
+	ctx.ScheduleRender()
 
 	return nil
 }
@@ -91,24 +72,14 @@ func (s *applyNode) Update(slot *loom.Slot) error {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	self := slot.Self().(string)
+	self := slot.Self().(uint32)
 	parent := slot.Parent().(core.Element)
 
 	stack := getStyleStack(parent)
 	stack.Replace(self, s.style)
 
-	err = ctx.DoSafely(func() error {
-		err = applyStyleStack(parent)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Apply (style): %w", err)
-	}
+	applyStyleStack(parent)
+	ctx.ScheduleRender()
 
 	return nil
 }
@@ -119,29 +90,15 @@ func (s *applyNode) Unmount(slot *loom.Slot) error {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	self := slot.Self().(string)
+	self := slot.Self().(uint32)
 	parent := slot.Parent().(core.Element)
 
 	stack := getStyleStack(parent)
 	stack.Pop(self)
 
-	err = ctx.DoSafely(func() error {
-		err = removeStyle(parent, &s.style)
-		if err != nil {
-			return err
-		}
-
-		err = applyStyleStack(parent)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Apply (style): %w", err)
-	}
+	removeStyle(parent, &s.style)
+	applyStyleStack(parent)
+	ctx.ScheduleRender()
 
 	return nil
 }

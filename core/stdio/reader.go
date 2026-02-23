@@ -29,11 +29,13 @@ func (r *Reader) run() {
 	buf := make([]byte, 1024)
 	for {
 		n, err := r.input.Read(buf)
+
 		if n > 0 {
 			data := make([]byte, n)
 			copy(data, buf[:n])
 			r.broadcast(data)
 		}
+
 		if err != nil {
 			r.closeAll()
 			return

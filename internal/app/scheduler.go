@@ -1,10 +1,9 @@
 package app
 
 import (
-	"fmt"
+	"context"
 	"sync"
 
-	"github.com/AnatoleLucet/loom-term/core/types"
 	"github.com/AnatoleLucet/loom/signals"
 )
 
@@ -12,23 +11,25 @@ import (
 type Scheduler struct {
 	mu sync.RWMutex
 
-	ctx types.RenderContext
+	ctx context.Context
 
-	render   func() error
+	// render   func() error
+	render func()
+
 	deffered []func() error
 
 	scheduled bool
 	clock     int
 	holdDepth int
 
-	errorChan chan error
+	errors chan error
 }
 
-func NewScheduler(ctx types.RenderContext, render func() error) *Scheduler {
+func NewScheduler(ctx context.Context, render func()) *Scheduler {
 	return &Scheduler{
-		ctx:       ctx,
-		render:    render,
-		errorChan: make(chan error, 1),
+		ctx:    ctx,
+		render: render,
+		errors: make(chan error, 1),
 	}
 }
 
@@ -39,7 +40,7 @@ func (s *Scheduler) Time() int {
 }
 
 func (s *Scheduler) Errors() <-chan error {
-	return s.errorChan
+	return s.errors
 }
 
 func (s *Scheduler) PushHold() {
@@ -48,14 +49,14 @@ func (s *Scheduler) PushHold() {
 	s.mu.Unlock()
 }
 
-func (s *Scheduler) PopHold() error {
+func (s *Scheduler) PopHold() {
 	s.mu.Lock()
 	if s.holdDepth > 0 {
 		s.holdDepth--
 	}
 	s.mu.Unlock()
 
-	return s.Schedule()
+	s.Schedule()
 }
 
 func (s *Scheduler) Defer(f func() error) {
@@ -64,51 +65,48 @@ func (s *Scheduler) Defer(f func() error) {
 	s.deffered = append(s.deffered, f)
 }
 
-func (s *Scheduler) Schedule() error {
+func (s *Scheduler) Schedule() {
 	s.mu.Lock()
 	if s.holdDepth > 0 || s.scheduled {
 		s.mu.Unlock()
-		return nil
+		return
 	}
-
 	s.scheduled = true
 	s.mu.Unlock()
 
 	// enqueue directly for the first render because the reactive system is not being updated yet,
 	// we're just initializing the tree
 	if s.clock == 0 {
-		go s.doRender()
-		return nil
+		s.doRender()
 	}
 
 	// else, it means a signal has been updated and the reactive system is flusing.
 	// so wait for every render effects (element updates) to settle to enqueue only one render afterwards
 	signals.OnRenderSettled(func() {
-		go s.doRender()
+		s.doRender()
 	})
 
-	return nil
 }
 
 func (s *Scheduler) doRender() {
-	s.ctx.LockRender()
-	defer s.ctx.UnlockRender()
+	// for s.scheduled {
+	// 	select {
+	// 	case <-s.ctx.Done():
+	// 		return
+	// 	default:
+	// 	}
 
-	for s.scheduled {
-		err := s.render()
+	s.mu.Lock()
+	s.clock++
+	s.scheduled = false
+	s.mu.Unlock()
 
-		s.mu.Lock()
-		s.clock++
-		s.scheduled = false
-		s.mu.Unlock()
+	s.render()
 
-		err = s.drainDeferred() // might reschedule an update
-
-		if err != nil {
-			s.errorChan <- fmt.Errorf("Scheduler: %w", err)
-			return
-		}
-	}
+	// 	if s.scheduled {
+	// 		core.LogDebugf("Render scheduled during render, deferring next render")
+	// 	}
+	// }
 }
 
 func (s *Scheduler) drainDeferred() error {
@@ -118,6 +116,12 @@ func (s *Scheduler) drainDeferred() error {
 	s.mu.Unlock()
 
 	for _, f := range deffered {
+		select {
+		case <-s.ctx.Done():
+			return nil
+		default:
+		}
+
 		err := f()
 		if err != nil {
 			return err

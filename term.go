@@ -1,16 +1,13 @@
-package main
+package term
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"os"
+	"sync"
 
 	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/core/runtime"
 	"github.com/AnatoleLucet/loom-term/internal/app"
-	"github.com/AnatoleLucet/loom-term/internal/errs"
-	. "github.com/AnatoleLucet/loom/components"
 	"github.com/AnatoleLucet/loom/signals"
 )
 
@@ -20,138 +17,140 @@ const RenderInline RenderType = core.RenderInline
 const RenderFullscreen RenderType = core.RenderFullscreen
 
 type App struct {
-	running bool
+	mu sync.Mutex
 
-	slot  *loom.Slot
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	rdr   *core.Renderer
 	owner *signals.Owner
 
-	errorChan chan any
+	running bool
+	errors  chan any
 }
 
 func NewApp() *App {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &App{
-		running:   false,
-		owner:     signals.NewOwner(),
-		errorChan: make(chan any, 1),
+		ctx:     ctx,
+		cancel:  cancel,
+		running: false,
+		errors:  make(chan any, 1),
 	}
 }
 
 func (a *App) Run(typ RenderType, fn func() loom.Node) <-chan any {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			a.errors <- fmt.Errorf("App: %w", err)
+			a.close()
+		}
+	}()
+
 	if a.running {
-		a.errorChan <- errors.New("app is already running")
-		return a.errorChan
+		err = ErrAppAlreadyRunning
+		return a.errors
 	}
 
-	a.owner.OnError(func(err any) {
-		a.errorChan <- err
-	})
-
-	err := a.Render(typ, fn)
+	a.rdr, err = core.NewRenderer(typ)
 	if err != nil {
-		a.errorChan <- err
-		return a.errorChan
+		return a.errors
 	}
+
+	err = a.render(fn)
+	if err != nil {
+		return a.errors
+	}
+
+	// syncronously destroy the app if the root destroys itself
+	a.rdr.Root().OnDestroy(a.Close)
+
+	// forward errors from the renderer
+	go forward(a.ctx, a.rdr.Errors(), a.errors)
 
 	a.running = true
-	return a.errorChan
+	return a.errors
 }
 
-func (a *App) Render(typ RenderType, fn func() loom.Node) error {
-	err := a.owner.Run(func() error {
-		rt, err := runtime.NewRuntime(typ)
-		if err != nil {
-			return fmt.Errorf("App: %w: %w", errs.ErrAppFailedToInitialize, err)
-		}
+func (a *App) render(fn func() loom.Node) error {
+	appctx := app.NewAppContext(a.ctx, a.rdr)
 
-		ctx := app.NewAppContext(rt)
-		go a.forwardErrors(ctx.Errors())
-
-		node := &rootNode{
-			typ: typ,
-			fn:  fn,
-			ctx: ctx,
-		}
-
-		slot, err := loom.Render(nil, node)
-		a.slot = slot
-
-		return err
-	})
-
+	root, err := newRootNode(a.ctx, appctx, fn)
 	if err != nil {
-		a.owner.Dispose()
-		return err
+		return fmt.Errorf("failed to create root node:  %w", err)
 	}
+
+	a.owner, err = loom.Render(nil, root)
+	if err != nil {
+		return fmt.Errorf("failed on initial render: %w", err)
+	}
+
+	// handle panics in the reactive system
+	a.owner.OnError(a.emitError)
+
+	// forward errors from the appctx
+	go forward(a.ctx, appctx.Errors(), a.errors)
 
 	return nil
 }
 
 func (a *App) Close() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if !a.running {
 		return
 	}
 	a.running = false
 
-	if a.slot != nil {
-		a.slot.Unmount()
+	a.close()
+}
+
+func (a *App) close() {
+	// make sure to cancel the ctx BEFORE unmounting the tree,
+	// else some goroutine might squeeze in an update/render on the destroyed tree before the ctx is cancelled.
+	a.cancel()
+
+	if a.rdr != nil {
+		a.rdr.Close()
+		a.rdr = nil
 	}
 
-	// todo: move in renderer.Close()
-	os.Stdout.WriteString("\x1b[?25h") // ensure cursor is visible
-
-	a.owner.Dispose()
-}
-
-func (a *App) forwardErrors(errs <-chan error) {
-	a.errorChan <- <-errs
-}
-
-type rootNode struct {
-	typ RenderType
-	ctx *app.AppContext
-	fn  func() loom.Node
-}
-
-func (n *rootNode) ID() string {
-	return "term.Root"
-}
-
-func (n *rootNode) Mount(slot *loom.Slot) error {
-	n.ctx.PushRenderHold()
-	defer n.ctx.PopRenderHold()
-
-	slot.SetSelf(n.ctx.Root())
-
-	n.ctx.Root().SetPosition("relative")
-
-	width, height := TerminalSize()
-	if width > 0 {
-		n.ctx.Root().SetWidth(width)
+	if a.owner != nil {
+		a.owner.Dispose()
+		a.owner = nil
 	}
-	if height > 0 {
-		if n.typ == RenderFullscreen {
-			n.ctx.Root().SetHeight(height)
+
+	close(a.errors)
+}
+
+func (a *App) emitError(err any) {
+	if !a.running || a.ctx.Err() != nil {
+		return
+	}
+
+	select {
+	case a.errors <- err:
+	case <-a.ctx.Done():
+	}
+}
+
+func forward[t any](ctx context.Context, source <-chan t, target chan<- any) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case v := <-source:
+			select {
+			case target <- v:
+			case <-ctx.Done():
+				return
+			}
 		}
-
-		if n.typ == RenderInline {
-			n.ctx.Root().SetMaxHeight(height)
-		}
 	}
-
-	return n.Update(slot)
-}
-
-func (n *rootNode) Update(slot *loom.Slot) error {
-	n.ctx.PushRenderHold()
-	defer n.ctx.PopRenderHold()
-
-	return slot.RenderChildren(Provider(app.Context, n.ctx, n.fn))
-}
-
-func (n *rootNode) Unmount(slot *loom.Slot) error {
-	if n.ctx != nil {
-		n.ctx.Close()
-	}
-
-	return nil
 }

@@ -1,14 +1,13 @@
 package components
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/AnatoleLucet/loom-term/core"
 )
 
 type styleLayer struct {
-	id    string
+	id    uint32
 	style Style
 }
 
@@ -16,11 +15,11 @@ type styleStack struct {
 	layers []styleLayer
 }
 
-func (s *styleStack) Push(id string, style Style) {
+func (s *styleStack) Push(id uint32, style Style) {
 	s.layers = append(s.layers, styleLayer{id, style})
 }
 
-func (s *styleStack) Replace(id string, style Style) {
+func (s *styleStack) Replace(id uint32, style Style) {
 	for i, layer := range s.layers {
 		if layer.id == id {
 			s.layers[i].style = style
@@ -29,7 +28,7 @@ func (s *styleStack) Replace(id string, style Style) {
 	}
 }
 
-func (s *styleStack) Pop(id string) {
+func (s *styleStack) Pop(id uint32) {
 	s.layers = slices.DeleteFunc(s.layers, func(layer styleLayer) bool {
 		return layer.id == id
 	})
@@ -47,418 +46,486 @@ func getStyleStack(elem core.Element) *styleStack {
 	return stack
 }
 
-func applyStyleStack(elem core.Element) error {
+func applyStyleStack(elem core.Element) {
 	stack := getStyleStack(elem)
 
 	for _, layer := range stack.layers {
-		err := applyStyle(elem, &layer.style)
-		if err != nil {
-			return err
-		}
+		applyStyle(elem, &layer.style)
 	}
-
-	return nil
 }
 
-func applyStyle(elem core.Element, style *Style) (err error) {
-	err = applyStyleDimension(elem, style)
-	err = applyStylePositionning(elem, style)
-	err = applyStyleSpacing(elem, style)
-	err = applyStyleDisplay(elem, style)
-	err = applyStyleFlexbox(elem, style)
-	err = applyStyleOverflow(elem, style)
-	err = applyStyleBackground(elem, style)
-	err = applyStyleText(elem, style)
-
-	// err = s.applyStyleBorder(elem, style)
-
-	return err
+func applyStyle(elem core.Element, style *Style) {
+	applyStyleDimension(elem, style)
+	applyStylePositionning(elem, style)
+	applyStyleSpacing(elem, style)
+	applyStyleBorder(elem, style)
+	applyStyleDisplay(elem, style)
+	applyStyleFlexbox(elem, style)
+	applyStyleOverflow(elem, style)
+	applyStyleBackground(elem, style)
+	applyStyleText(elem, style)
 }
 
-func applyStyleDimension(elem core.Element, style *Style) (err error) {
+func applyStyleDimension(elem core.Element, style *Style) {
 	if style.Width != nil {
-		err = elem.SetWidth(style.Width)
+		elem.SetWidth(style.Width)
 	}
 	if style.MinWidth != nil {
-		err = elem.SetMinWidth(style.MinWidth)
+		elem.SetMinWidth(style.MinWidth)
 	}
 	if style.MaxWidth != nil {
-		err = elem.SetMaxWidth(style.MaxWidth)
+		elem.SetMaxWidth(style.MaxWidth)
 	}
 
 	if style.Height != nil {
-		err = elem.SetHeight(style.Height)
+		elem.SetHeight(style.Height)
 	}
 	if style.MinHeight != nil {
-		err = elem.SetMinHeight(style.MinHeight)
+		elem.SetMinHeight(style.MinHeight)
 	}
 	if style.MaxHeight != nil {
-		err = elem.SetMaxHeight(style.MaxHeight)
+		elem.SetMaxHeight(style.MaxHeight)
 	}
-
-	return err
 }
 
-func applyStylePositionning(elem core.Element, style *Style) (err error) {
+func applyStylePositionning(elem core.Element, style *Style) {
 	if style.Top != nil {
-		err = elem.SetTop(style.Top)
+		elem.SetTop(style.Top)
 	}
 	if style.Bottom != nil {
-		err = elem.SetBottom(style.Bottom)
+		elem.SetBottom(style.Bottom)
 	}
 	if style.Left != nil {
-		err = elem.SetLeft(style.Left)
+		elem.SetLeft(style.Left)
 	}
 	if style.Right != nil {
-		err = elem.SetRight(style.Right)
+		elem.SetRight(style.Right)
 	}
 
 	if elem.ZIndex() != style.ZIndex {
-		err = elem.SetZIndex(style.ZIndex)
+		elem.SetZIndex(style.ZIndex)
 	}
 
 	if style.Position != "" {
-		err = elem.SetPosition(style.Position)
+		elem.SetPosition(style.Position)
 	}
-
-	return err
 }
 
-func applyStyleSpacing(elem core.Element, style *Style) (err error) {
+func applyStyleSpacing(elem core.Element, style *Style) {
 	if style.PaddingAll != nil {
-		err = elem.SetPaddingAll(style.PaddingAll)
+		elem.SetPaddingAll(style.PaddingAll)
 	}
 	if style.PaddingVertical != nil {
-		err = elem.SetPaddingVertical(style.PaddingVertical)
+		elem.SetPaddingVertical(style.PaddingVertical)
 	}
 	if style.PaddingHorizontal != nil {
-		err = elem.SetPaddingHorizontal(style.PaddingHorizontal)
+		elem.SetPaddingHorizontal(style.PaddingHorizontal)
 	}
 	if style.PaddingTop != nil {
-		err = elem.SetPaddingTop(style.PaddingTop)
+		elem.SetPaddingTop(style.PaddingTop)
 	}
 	if style.PaddingBottom != nil {
-		err = elem.SetPaddingBottom(style.PaddingBottom)
+		elem.SetPaddingBottom(style.PaddingBottom)
 	}
 	if style.PaddingLeft != nil {
-		err = elem.SetPaddingLeft(style.PaddingLeft)
+		elem.SetPaddingLeft(style.PaddingLeft)
 	}
 	if style.PaddingRight != nil {
-		err = elem.SetPaddingRight(style.PaddingRight)
+		elem.SetPaddingRight(style.PaddingRight)
 	}
 
 	if style.MarginAll != nil {
-		err = elem.SetMarginAll(style.MarginAll)
+		elem.SetMarginAll(style.MarginAll)
 	}
 	if style.MarginVertical != nil {
-		err = elem.SetMarginVertical(style.MarginVertical)
+		elem.SetMarginVertical(style.MarginVertical)
 	}
 	if style.MarginHorizontal != nil {
-		err = elem.SetMarginHorizontal(style.MarginHorizontal)
+		elem.SetMarginHorizontal(style.MarginHorizontal)
 	}
 	if style.MarginTop != nil {
-		err = elem.SetMarginTop(style.MarginTop)
+		elem.SetMarginTop(style.MarginTop)
 	}
 	if style.MarginBottom != nil {
-		err = elem.SetMarginBottom(style.MarginBottom)
+		elem.SetMarginBottom(style.MarginBottom)
 	}
 	if style.MarginLeft != nil {
-		err = elem.SetMarginLeft(style.MarginLeft)
+		elem.SetMarginLeft(style.MarginLeft)
 	}
 	if style.MarginRight != nil {
-		err = elem.SetMarginRight(style.MarginRight)
+		elem.SetMarginRight(style.MarginRight)
 	}
 
 	if style.GapAll != nil {
-		err = elem.SetGapAll(style.GapAll)
+		elem.SetGapAll(style.GapAll)
 	}
 	if style.GapRow != nil {
-		err = elem.SetGapRow(style.GapRow)
+		elem.SetGapRow(style.GapRow)
 	}
 	if style.GapColumn != nil {
-		err = elem.SetGapColumn(style.GapColumn)
+		elem.SetGapColumn(style.GapColumn)
 	}
-
-	return err
 }
 
-func applyStyleDisplay(elem core.Element, style *Style) error {
-	if style.Display != "" {
-		err := elem.SetDisplay(style.Display)
-		if err != nil {
-			return fmt.Errorf("unable to set display: %w", err)
+func applyStyleBorder(elem core.Element, style *Style) {
+	if style.BorderAll != "" {
+		if n, ok := elem.(interface{ SetBorderAll(string) }); ok {
+			n.SetBorderAll(style.BorderAll)
 		}
 	}
-
-	return nil
+	if style.BorderVertical != "" {
+		if n, ok := elem.(interface{ SetBorderVertical(string) }); ok {
+			n.SetBorderVertical(style.BorderVertical)
+		}
+	}
+	if style.BorderHorizontal != "" {
+		if n, ok := elem.(interface{ SetBorderHorizontal(string) }); ok {
+			n.SetBorderHorizontal(style.BorderHorizontal)
+		}
+	}
+	if style.BorderTop != "" {
+		if n, ok := elem.(interface{ SetBorderTop(string) }); ok {
+			n.SetBorderTop(style.BorderTop)
+		}
+	}
+	if style.BorderBottom != "" {
+		if n, ok := elem.(interface{ SetBorderBottom(string) }); ok {
+			n.SetBorderBottom(style.BorderBottom)
+		}
+	}
+	if style.BorderLeft != "" {
+		if n, ok := elem.(interface{ SetBorderLeft(string) }); ok {
+			n.SetBorderLeft(style.BorderLeft)
+		}
+	}
+	if style.BorderRight != "" {
+		if n, ok := elem.(interface{ SetBorderRight(string) }); ok {
+			n.SetBorderRight(style.BorderRight)
+		}
+	}
 }
 
-func applyStyleFlexbox(elem core.Element, style *Style) (err error) {
+func applyStyleDisplay(elem core.Element, style *Style) {
+	if style.Display != "" {
+		elem.SetDisplay(style.Display)
+	}
+}
+
+func applyStyleFlexbox(elem core.Element, style *Style) {
 	if style.AlignSelf != "" {
-		err = elem.SetAlignSelf(style.AlignSelf)
+		elem.SetAlignSelf(style.AlignSelf)
 	}
 	if style.AlignItems != "" {
-		err = elem.SetAlignItems(style.AlignItems)
+		elem.SetAlignItems(style.AlignItems)
 	}
 	if style.AlignContent != "" {
-		err = elem.SetAlignContent(style.AlignContent)
+		elem.SetAlignContent(style.AlignContent)
 	}
 
 	if style.JustifyContent != "" {
-		err = elem.SetJustifyContent(style.JustifyContent)
+		elem.SetJustifyContent(style.JustifyContent)
 	}
 
 	if style.FlexDirection != "" {
-		err = elem.SetFlexDirection(style.FlexDirection)
+		elem.SetFlexDirection(style.FlexDirection)
 	}
 
 	if style.FlexWrap != "" {
-		err = elem.SetFlexWrap(style.FlexWrap)
+		elem.SetFlexWrap(style.FlexWrap)
 	}
 
 	if style.FlexGrow != "" {
-		err = elem.SetFlexGrow(style.FlexGrow)
+		elem.SetFlexGrow(style.FlexGrow)
 	}
 	if style.FlexShrink != "" {
-		err = elem.SetFlexShrink(style.FlexShrink)
+		elem.SetFlexShrink(style.FlexShrink)
 	}
-
-	return err
 }
 
-func applyStyleOverflow(elem core.Element, style *Style) error {
+func applyStyleOverflow(elem core.Element, style *Style) {
 	if style.Overflow != "" {
-		err := elem.SetOverflow(style.Overflow)
-		if err != nil {
-			return fmt.Errorf("unable to set overflow: %w", err)
-		}
+		elem.SetOverflow(style.Overflow)
 	}
-
-	return nil
 }
 
-func applyStyleBackground(elem core.Element, style *Style) error {
+func applyStyleBackground(elem core.Element, style *Style) {
 	if style.BackgroundColor != "" {
-		if n, ok := elem.(interface{ SetBackgroundColor(string) error }); ok {
-			err := n.SetBackgroundColor(style.BackgroundColor)
-			if err != nil {
-				return fmt.Errorf("unable to set background color: %w", err)
-			}
+		if n, ok := elem.(interface{ SetBackgroundColor(string) }); ok {
+			n.SetBackgroundColor(style.BackgroundColor)
+		} else if n, ok := elem.(interface{ SetTextBackground(string) }); ok && style.DropColor == "" {
+			n.SetTextBackground(style.BackgroundColor)
 		}
 	}
-
-	return nil
 }
 
-func applyStyleText(elem core.Element, style *Style) error {
+func applyStyleText(elem core.Element, style *Style) {
 	if style.Color != "" {
-		if n, ok := elem.(interface{ SetForegroundColor(string) error }); ok {
-			err := n.SetForegroundColor(style.Color)
-			if err != nil {
-				return fmt.Errorf("unable to set text color: %w", err)
-			}
+		if n, ok := elem.(interface{ SetTextForeground(string) }); ok {
+			n.SetTextForeground(style.Color)
+		}
+	}
+	if style.DropColor != "" {
+		if n, ok := elem.(interface{ SetTextBackground(string) }); ok {
+			n.SetTextBackground(style.DropColor)
 		}
 	}
 
-	return nil
+	if style.FontWeight != "" {
+		if n, ok := elem.(interface{ SetFontWeight(string) }); ok {
+			n.SetFontWeight(style.FontWeight)
+		}
+	}
+	if style.FontStyle != "" {
+		if n, ok := elem.(interface{ SetFontStyle(string) }); ok {
+			n.SetFontStyle(style.FontStyle)
+		}
+	}
+
+	if style.TextDecoration != "" {
+		if n, ok := elem.(interface{ SetTextDecoration(string) }); ok {
+			n.SetTextDecoration(style.TextDecoration)
+		}
+	}
+	if style.TextWrap != "" {
+		if n, ok := elem.(interface{ SetWrap(string) }); ok {
+			n.SetWrap(style.TextWrap)
+		}
+	}
 }
 
-func removeStyle(elem core.Element, style *Style) (err error) {
-	err = removeStyleDimension(elem, style)
-	err = removeStylePositionning(elem, style)
-	err = removeStyleSpacing(elem, style)
-	err = removeStyleDisplay(elem, style)
-	err = removeStyleFlexbox(elem, style)
-	err = removeStyleOverflow(elem, style)
-	err = removeStyleBackground(elem, style)
-	err = removeStyleText(elem, style)
-
-	// err = s.removeStyleBorder(elem, style)
-
-	return err
+func removeStyle(elem core.Element, style *Style) {
+	removeStyleDimension(elem, style)
+	removeStylePositionning(elem, style)
+	removeStyleSpacing(elem, style)
+	removeStyleBorder(elem, style)
+	removeStyleDisplay(elem, style)
+	removeStyleFlexbox(elem, style)
+	removeStyleOverflow(elem, style)
+	removeStyleBackground(elem, style)
+	removeStyleText(elem, style)
 }
 
-func removeStyleDimension(elem core.Element, style *Style) (err error) {
+func removeStyleDimension(elem core.Element, style *Style) {
 	if style.Width != nil {
-		err = elem.UnsetWidth()
+		elem.UnsetWidth()
 	}
 	if style.MinWidth != nil {
-		err = elem.UnsetMinWidth()
+		elem.UnsetMinWidth()
 	}
 	if style.MaxWidth != nil {
-		err = elem.UnsetMaxWidth()
+		elem.UnsetMaxWidth()
 	}
 
 	if style.Height != nil {
-		err = elem.UnsetHeight()
+		elem.UnsetHeight()
 	}
 	if style.MinHeight != nil {
-		err = elem.UnsetMinHeight()
+		elem.UnsetMinHeight()
 	}
 	if style.MaxHeight != nil {
-		err = elem.UnsetMaxHeight()
+		elem.UnsetMaxHeight()
 	}
 
-	return err
 }
 
-func removeStylePositionning(elem core.Element, style *Style) (err error) {
+func removeStylePositionning(elem core.Element, style *Style) {
 	if style.Top != nil {
-		err = elem.UnsetTop()
+		elem.UnsetTop()
 	}
 	if style.Bottom != nil {
-		err = elem.UnsetBottom()
+		elem.UnsetBottom()
 	}
 	if style.Left != nil {
-		err = elem.UnsetLeft()
+		elem.UnsetLeft()
 	}
 	if style.Right != nil {
-		err = elem.UnsetRight()
+		elem.UnsetRight()
 	}
 
 	if style.ZIndex != 0 {
-		err = elem.UnsetZIndex()
+		elem.UnsetZIndex()
 	}
 
 	if style.Position != "" {
-		err = elem.UnsetPosition()
+		elem.UnsetPosition()
 	}
-
-	return err
 }
 
-func removeStyleSpacing(elem core.Element, style *Style) (err error) {
+func removeStyleSpacing(elem core.Element, style *Style) {
 	if style.PaddingAll != nil {
-		err = elem.UnsetPaddingAll()
+		elem.UnsetPaddingAll()
 	}
 	if style.PaddingVertical != nil {
-		err = elem.UnsetPaddingVertical()
+		elem.UnsetPaddingVertical()
 	}
 	if style.PaddingHorizontal != nil {
-		err = elem.UnsetPaddingHorizontal()
+		elem.UnsetPaddingHorizontal()
 	}
 	if style.PaddingTop != nil {
-		err = elem.UnsetPaddingTop()
+		elem.UnsetPaddingTop()
 	}
 	if style.PaddingBottom != nil {
-		err = elem.UnsetPaddingBottom()
+		elem.UnsetPaddingBottom()
 	}
 	if style.PaddingLeft != nil {
-		err = elem.UnsetPaddingLeft()
+		elem.UnsetPaddingLeft()
 	}
 	if style.PaddingRight != nil {
-		err = elem.UnsetPaddingRight()
+		elem.UnsetPaddingRight()
 	}
 
 	if style.MarginAll != nil {
-		err = elem.UnsetMarginAll()
+		elem.UnsetMarginAll()
 	}
 	if style.MarginVertical != nil {
-		err = elem.UnsetMarginVertical()
+		elem.UnsetMarginVertical()
 	}
 	if style.MarginHorizontal != nil {
-		err = elem.UnsetMarginHorizontal()
+		elem.UnsetMarginHorizontal()
 	}
 	if style.MarginTop != nil {
-		err = elem.UnsetMarginTop()
+		elem.UnsetMarginTop()
 	}
 	if style.MarginBottom != nil {
-		err = elem.UnsetMarginBottom()
+		elem.UnsetMarginBottom()
 	}
 	if style.MarginLeft != nil {
-		err = elem.UnsetMarginLeft()
+		elem.UnsetMarginLeft()
 	}
 	if style.MarginRight != nil {
-		err = elem.UnsetMarginRight()
+		elem.UnsetMarginRight()
 	}
 
 	if style.GapAll != nil {
-		err = elem.UnsetGapAll()
+		elem.UnsetGapAll()
 	}
 	if style.GapRow != nil {
-		err = elem.UnsetGapRow()
+		elem.UnsetGapRow()
 	}
 	if style.GapColumn != nil {
-		err = elem.UnsetGapColumn()
+		elem.UnsetGapColumn()
 	}
-
-	return err
 }
 
-func removeStyleDisplay(elem core.Element, style *Style) error {
-	if style.Display != "" {
-		err := elem.UnsetDisplay()
-		if err != nil {
-			return fmt.Errorf("unable to unset display: %w", err)
+func removeStyleBorder(elem core.Element, style *Style) {
+	if style.BorderAll != "" {
+		if n, ok := elem.(interface{ UnsetBorderAll() }); ok {
+			n.UnsetBorderAll()
 		}
 	}
-
-	return nil
+	if style.BorderVertical != "" {
+		if n, ok := elem.(interface{ UnsetBorderVertical() }); ok {
+			n.UnsetBorderVertical()
+		}
+	}
+	if style.BorderHorizontal != "" {
+		if n, ok := elem.(interface{ UnsetBorderHorizontal() }); ok {
+			n.UnsetBorderHorizontal()
+		}
+	}
+	if style.BorderTop != "" {
+		if n, ok := elem.(interface{ UnsetBorderTop() }); ok {
+			n.UnsetBorderTop()
+		}
+	}
+	if style.BorderBottom != "" {
+		if n, ok := elem.(interface{ UnsetBorderBottom() }); ok {
+			n.UnsetBorderBottom()
+		}
+	}
+	if style.BorderLeft != "" {
+		if n, ok := elem.(interface{ UnsetBorderLeft() }); ok {
+			n.UnsetBorderLeft()
+		}
+	}
+	if style.BorderRight != "" {
+		if n, ok := elem.(interface{ UnsetBorderRight() }); ok {
+			n.UnsetBorderRight()
+		}
+	}
 }
 
-func removeStyleFlexbox(elem core.Element, style *Style) (err error) {
+func removeStyleDisplay(elem core.Element, style *Style) {
+	if style.Display != "" {
+		elem.UnsetDisplay()
+	}
+}
+
+func removeStyleFlexbox(elem core.Element, style *Style) {
 	if style.AlignSelf != "" {
-		err = elem.UnsetAlignSelf()
+		elem.UnsetAlignSelf()
 	}
 	if style.AlignItems != "" {
-		err = elem.UnsetAlignItems()
+		elem.UnsetAlignItems()
 	}
 	if style.AlignContent != "" {
-		err = elem.UnsetAlignContent()
+		elem.UnsetAlignContent()
 	}
 
 	if style.JustifyContent != "" {
-		err = elem.UnsetJustifyContent()
+		elem.UnsetJustifyContent()
 	}
 	if style.FlexDirection != "" {
-		err = elem.UnsetFlexDirection()
+		elem.UnsetFlexDirection()
 	}
 	if style.FlexWrap != "" {
-		err = elem.UnsetFlexWrap()
+		elem.UnsetFlexWrap()
 	}
 	if style.FlexGrow != "" {
-		err = elem.UnsetFlexGrow()
+		elem.UnsetFlexGrow()
 	}
 	if style.FlexShrink != "" {
-		err = elem.UnsetFlexShrink()
+		elem.UnsetFlexShrink()
 	}
-
-	return err
 }
 
-func removeStyleOverflow(elem core.Element, style *Style) error {
+func removeStyleOverflow(elem core.Element, style *Style) {
 	if style.Overflow != "" {
-		err := elem.UnsetOverflow()
-		if err != nil {
-			return fmt.Errorf("unable to unset overflow: %w", err)
-		}
+		elem.UnsetOverflow()
 	}
-
-	return nil
 }
 
-func removeStyleBackground(elem core.Element, style *Style) error {
+func removeStyleBackground(elem core.Element, style *Style) {
 	if style.BackgroundColor != "" {
-		if n, ok := elem.(interface{ UnsetBackgroundColor() error }); ok {
-			err := n.UnsetBackgroundColor()
-			if err != nil {
-				return fmt.Errorf("unable to unset background color: %w", err)
-			}
+		if n, ok := elem.(interface{ UnsetBackgroundColor() }); ok {
+			n.UnsetBackgroundColor()
+		} else if n, ok := elem.(interface{ UnsetTextBackground() }); ok && style.DropColor == "" {
+			n.UnsetTextBackground()
 		}
 	}
-
-	return nil
 }
 
-func removeStyleText(elem core.Element, style *Style) error {
+func removeStyleText(elem core.Element, style *Style) {
 	if style.Color != "" {
-		if n, ok := elem.(interface{ UnsetForegroundColor() error }); ok {
-			err := n.UnsetForegroundColor()
-			if err != nil {
-				return fmt.Errorf("unable to unset text color: %w", err)
-			}
+		if n, ok := elem.(interface{ UnsetForegroundColor() }); ok {
+			n.UnsetForegroundColor()
+		}
+	}
+	if style.DropColor != "" {
+		if n, ok := elem.(interface{ UnsetTextBackground() }); ok {
+			n.UnsetTextBackground()
 		}
 	}
 
-	return nil
+	if style.FontWeight != "" {
+		if n, ok := elem.(interface{ UnsetFontWeight() }); ok {
+			n.UnsetFontWeight()
+		}
+	}
+	if style.FontStyle != "" {
+		if n, ok := elem.(interface{ UnsetFontStyle() }); ok {
+			n.UnsetFontStyle()
+		}
+	}
+
+	if style.TextDecoration != "" {
+		if n, ok := elem.(interface{ UnsetTextDecoration() }); ok {
+			n.UnsetTextDecoration()
+		}
+	}
+	if style.TextWrap != "" {
+		if n, ok := elem.(interface{ UnsetWrap() }); ok {
+			n.UnsetWrap()
+		}
+	}
 }

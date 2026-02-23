@@ -10,11 +10,14 @@ import (
 	. "github.com/AnatoleLucet/loom/components"
 )
 
-func Text(content string, styles ...loom.Node) loom.Node {
-	return &textNode{content, styles}
+func Text(content any, styles ...loom.Node) loom.Node {
+	return &textNode{
+		content: fmt.Sprintf("%v", content),
+		styles:  styles,
+	}
 }
 
-func BindText(fn func() string, styles ...loom.Node) loom.Node {
+func BindText[T any](fn func() T, styles ...loom.Node) loom.Node {
 	return Bind(func() loom.Node {
 		return Text(fn(), styles...)
 	})
@@ -39,24 +42,14 @@ func (n *textNode) Mount(slot *loom.Slot) error {
 	defer ctx.PopRenderHold()
 
 	parent := slot.Parent().(core.Element)
-	self, err := elements.NewTextElement(ctx.RenderContext())
+	self, err := elements.NewTextElement()
 	if err != nil {
 		return err
 	}
 	slot.SetSelf(self)
 
-	err = ctx.DoSafely(func() error {
-		err = parent.AppendChild(self)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Text: %w", err)
-	}
+	parent.AppendChild(self)
+	ctx.ScheduleRender()
 
 	return n.Update(slot)
 }
@@ -72,18 +65,8 @@ func (n *textNode) Update(slot *loom.Slot) error {
 
 	self := slot.Self().(*elements.TextElement)
 
-	err = ctx.DoSafely(func() error {
-		err = self.SetContent(n.content)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Text: %w", err)
-	}
+	self.SetText(n.content)
+	ctx.ScheduleRender()
 
 	return slot.RenderChildren(n.styles...)
 }
@@ -97,22 +80,10 @@ func (n *textNode) Unmount(slot *loom.Slot) error {
 	ctx.PushRenderHold()
 	defer ctx.PopRenderHold()
 
-	parent := slot.Parent().(core.Element)
 	self := slot.Self().(core.Element)
 
-	ctx.DoSafely(func() error {
-		err = parent.RemoveChild(self)
-		err = self.Destroy()
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Text: %w", err)
-	}
+	self.Destroy()
+	ctx.ScheduleRender()
 
 	return nil
 }

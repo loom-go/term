@@ -28,24 +28,14 @@ func (n *consoleNode) Mount(slot *loom.Slot) error {
 	defer ctx.PopRenderHold()
 
 	parent := slot.Parent().(core.Element)
-	self, err := core.NewConsoleElement(ctx.RenderContext())
+	self, err := core.NewConsoleElement()
 	if err != nil {
-		return fmt.Errorf("Console: %w", err)
+		return err
 	}
 	slot.SetSelf(self)
 
-	err = ctx.DoSafely(func() error {
-		err = parent.AppendChild(self)
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Console: %w", err)
-	}
+	parent.AppendChild(self)
+	ctx.ScheduleRender()
 
 	return nil
 }
@@ -63,22 +53,10 @@ func (n *consoleNode) Unmount(slot *loom.Slot) error {
 	ctx.PushRenderHold()
 	defer ctx.PopRenderHold()
 
-	parent := slot.Parent().(core.Element)
 	self := slot.Self().(core.Element)
 
-	err = ctx.DoSafely(func() error {
-		err = parent.RemoveChild(self)
-		err = self.Destroy()
-		if err != nil {
-			return err
-		}
-
-		return ctx.RequestRender()
-	})
-
-	if err != nil {
-		return fmt.Errorf("Console: %w", err)
-	}
+	self.Destroy()
+	ctx.ScheduleRender()
 
 	return nil
 }

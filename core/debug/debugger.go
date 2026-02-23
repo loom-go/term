@@ -9,50 +9,92 @@ import (
 var debugger = NewDebugger()
 
 type Debugger struct {
-	logs *Emitter[string]
+	logs *Emitter[*LogEntry]
 
 	fps *RateMetric
 
 	frameTime  *TimingMetric
 	layoutTime *TimingMetric
-	paintTime  *TimingMetric
+	recordTime *TimingMetric
+	drawTime   *TimingMetric
 	renderTime *TimingMetric
 }
 
 func NewDebugger() *Debugger {
 	return &Debugger{
-		logs: NewEmitter[string](),
+		logs: NewEmitter[*LogEntry](),
 
 		fps: NewRateMetric(time.Second),
 
 		frameTime:  NewTimingMetric(),
 		renderTime: NewTimingMetric(),
+		recordTime: NewTimingMetric(),
 		layoutTime: NewTimingMetric(),
-		paintTime:  NewTimingMetric(),
+		drawTime:   NewTimingMetric(),
 	}
 }
 
-func (d *Debugger) emitLog(message string) {
-	go d.logs.Emit(message)
+func (d *Debugger) emitLog(log *LogEntry) {
+	go d.logs.Emit(log)
 }
 
-func LogDebug(message string) {
-	debugger.emitLog(fmt.Sprintf("[DEBUG] [%s] %s", time.Now().Format(time.TimeOnly), message))
+func LogDebugf(format string, args ...any) {
+	LogDebug(fmt.Sprintf(format, args...))
 }
 
-func LogInfo(message string) {
-	debugger.emitLog(fmt.Sprintf("[INFO] [%s] %s", time.Now().Format(time.TimeOnly), message))
+func LogDebug(args ...any) {
+	log := &LogEntry{
+		Level:   LogLevelDebug,
+		Message: fmt.Sprint(args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
-func LogWarning(message string) {
-	debugger.emitLog(fmt.Sprintf("[WARNING] [%s] %s", time.Now().Format(time.TimeOnly), message))
+func LogInfof(format string, args ...any) {
+	LogInfo(fmt.Sprintf(format, args...))
 }
 
-func LogError(message string) {
-	debugger.emitLog(fmt.Sprintf("[ERROR] [%s] %s", time.Now().Format(time.TimeOnly), message))
+func LogInfo(args ...any) {
+	log := &LogEntry{
+		Level:   LogLevelInfo,
+		Message: fmt.Sprint(args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
-func Logs() (logs <-chan string, cancel func()) {
+func LogWarningf(format string, args ...any) {
+	LogWarning(fmt.Sprintf(format, args...))
+}
+
+func LogWarning(args ...any) {
+	log := &LogEntry{
+		Level:   LogLevelWarning,
+		Message: fmt.Sprint(args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
+}
+
+func LogErrorf(format string, args ...any) {
+	LogError(fmt.Sprintf(format, args...))
+}
+
+func LogError(args ...any) {
+	log := &LogEntry{
+		Level:   LogLevelError,
+		Message: fmt.Sprint(args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
+}
+
+func Logs() (logs <-chan *LogEntry, cancel func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return debugger.logs.Subscribe(ctx, 100), cancel
 }
@@ -78,12 +120,20 @@ func LayoutTime() (durations <-chan *TimingRecord, cancel func()) {
 	return debugger.layoutTime.Subscribe(10)
 }
 
-func EmitPaintTime(duration time.Duration) {
-	go debugger.paintTime.Emit(duration)
+func EmitRecordTime(duration time.Duration) {
+	go debugger.recordTime.Emit(duration)
 }
 
-func PaintTime() (durations <-chan *TimingRecord, cancel func()) {
-	return debugger.paintTime.Subscribe(10)
+func RecordTime() (durations <-chan *TimingRecord, cancel func()) {
+	return debugger.recordTime.Subscribe(10)
+}
+
+func EmitDrawTime(duration time.Duration) {
+	go debugger.drawTime.Emit(duration)
+}
+
+func DrawTime() (durations <-chan *TimingRecord, cancel func()) {
+	return debugger.drawTime.Subscribe(10)
 }
 
 func EmitRenderTime(duration time.Duration) {
