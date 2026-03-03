@@ -23,19 +23,22 @@ type RenderContext struct {
 
 	typ RenderType
 
-	root    *RootElement
+	root *RootElement
+
 	hitGrid map[uint32]Element
 
 	scheduler *Scheduler
 
 	focused Element
-	hovered Element
 	pressed Element
+	hovered []Element // path from root to hovered element
 
 	scheduled bool
 
-	lastMouseX    int
-	lastMouseY    int
+	lastMouseX       int
+	lastMouseY       int
+	hasMousePosition bool
+
 	renderOffsetY int
 	renderOffsetX int
 
@@ -89,13 +92,7 @@ func (rc *RenderContext) render() (err error) {
 		}
 	}()
 
-	err = rc.root.Render(nil, gfx.Rect{})
-	if err != nil {
-		return err
-	}
-
-	rc.RefreshMouseState()
-	return nil
+	return rc.root.Render(nil, gfx.Rect{})
 }
 
 func (rc *RenderContext) ScheduleUpdate(update func() error) {
@@ -128,6 +125,18 @@ func (rc *RenderContext) SetRenderOffset(x, y int) {
 	rc.mu.Unlock()
 }
 
+func (rc *RenderContext) HoverChain() []Element {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+	return rc.hovered
+}
+
+func (rc *RenderContext) SetHoverChain(chain []Element) {
+	rc.mu.Lock()
+	rc.hovered = chain
+	rc.mu.Unlock()
+}
+
 func (rc *RenderContext) FocusedElement() Element {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
@@ -137,18 +146,6 @@ func (rc *RenderContext) FocusedElement() Element {
 func (rc *RenderContext) SetFocusedElement(element Element) {
 	rc.mu.Lock()
 	rc.focused = element
-	rc.mu.Unlock()
-}
-
-func (rc *RenderContext) HoveredElement() Element {
-	rc.mu.RLock()
-	defer rc.mu.RUnlock()
-	return rc.hovered
-}
-
-func (rc *RenderContext) SetHoveredElement(element Element) {
-	rc.mu.Lock()
-	rc.hovered = element
 	rc.mu.Unlock()
 }
 
@@ -241,6 +238,7 @@ func (rc *RenderContext) SetMousePosition(x, y int) {
 	rc.mu.Lock()
 	rc.lastMouseX = x
 	rc.lastMouseY = y
+	rc.hasMousePosition = true
 	rc.mu.Unlock()
 }
 

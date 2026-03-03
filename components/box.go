@@ -40,7 +40,7 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 	slot.SetSelf(self)
 
 	parent.AppendChild(self)
-	ctx.ScheduleRender()
+	ctx.RequestRender()
 
 	return n.Update(slot)
 }
@@ -70,7 +70,7 @@ func (n *boxNode) Unmount(slot *loom.Slot) error {
 	self := slot.Self().(core.Element)
 
 	self.Destroy()
-	ctx.ScheduleRender()
+	ctx.RequestRender()
 
 	return nil
 }

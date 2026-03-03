@@ -80,6 +80,7 @@ func (r *RootElement) Render(*opentui.Buffer, gfx.Rect) (err error) {
 		return fmt.Errorf("%w: %w", ErrFailedToRenderFrame, err)
 	}
 
+	r.refreshMouseState()
 	return nil
 }
 

@@ -34,10 +34,6 @@ func (ac *AppContext) Root() core.Element {
 	return ac.rdr.Root()
 }
 
-func (ac *AppContext) Errors() <-chan error {
-	return ac.scheduler.Errors()
-}
-
 func (ac *AppContext) PushRenderHold() {
 	ac.scheduler.PushHold()
 }
@@ -46,6 +42,13 @@ func (ac *AppContext) PopRenderHold() {
 	ac.scheduler.PopHold()
 }
 
+// ScheduleRender schedules a render to be done when the holds are released,
+// and orchetrated with the reactive system (once render effects have been executed)
+func (ac *AppContext) RequestRender() {
+	ac.scheduler.ScheduleRender()
+}
+
+// ScheduleRender is a direct call to the renderer to render immediately, bypassing holds and the reactive system.
 func (ac *AppContext) ScheduleRender() {
-	ac.scheduler.Schedule()
+	ac.rdr.ScheduleRender()
 }

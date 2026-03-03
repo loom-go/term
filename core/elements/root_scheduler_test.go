@@ -2,7 +2,6 @@ package elements
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -24,7 +23,6 @@ func TestScheduler(t *testing.T) {
 				scheduler.Schedule(taskUpdate, func() error {
 					updates = append(updates, i)
 					time.Sleep(time.Millisecond)
-					fmt.Printf("Scheduled update %d\n", i)
 					return nil
 				})
 			}
@@ -34,7 +32,6 @@ func TestScheduler(t *testing.T) {
 			for len(updates) < 100 {
 				<-scheduler.Schedule(taskRender, func() error {
 					time.Sleep(5 * time.Millisecond)
-					fmt.Println("Scheduled render")
 					return nil
 				})
 			}
@@ -45,5 +42,39 @@ func TestScheduler(t *testing.T) {
 		for i, update := range updates {
 			assert.Equal(t, i, update)
 		}
+	})
+
+	t.Run("recursive schedule", func(t *testing.T) {
+		var wg sync.WaitGroup
+
+		scheduler := NewScheduler(context.Background())
+
+		var logs []string
+
+		wg.Add(1)
+		scheduler.Schedule(taskUpdate, func() error {
+			logs = append(logs, "first update")
+			wg.Done()
+
+			wg.Add(1)
+			scheduler.Schedule(taskRender, func() error {
+				logs = append(logs, "render")
+				wg.Done()
+				return nil
+			})
+
+			wg.Add(1)
+			scheduler.Schedule(taskUpdate, func() error {
+				logs = append(logs, "second update")
+				wg.Done()
+				return nil
+			})
+
+			return nil
+		})
+
+		wg.Wait()
+
+		assert.Equal(t, []string{"first update", "render", "second update"}, logs)
 	})
 }

@@ -38,14 +38,12 @@ func Size() (width, height int, err error) {
 	width, height, err = term.GetSize(fd)
 	if err != nil {
 		return 0, 0, fmt.Errorf("%w: %w", ErrFailedToGetTerminalSize, err)
-		// return 0, 0, err
 	}
 
 	return width, height, nil
 }
 
 func CursorPos() (row, col int, err error) {
-
 	oldState, err := MakeRaw()
 	if err != nil {
 		return 0, 0, fmt.Errorf("%w: %w", ErrFailedToGetCursorPosition, err)

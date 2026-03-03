@@ -39,7 +39,13 @@ func (d *Debugger) emitLog(log *LogEntry) {
 }
 
 func LogDebugf(format string, args ...any) {
-	LogDebug(fmt.Sprintf(format, args...))
+	log := &LogEntry{
+		Level:   LogLevelDebug,
+		Message: fmt.Sprintf(format, args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
 func LogDebug(args ...any) {
@@ -53,7 +59,13 @@ func LogDebug(args ...any) {
 }
 
 func LogInfof(format string, args ...any) {
-	LogInfo(fmt.Sprintf(format, args...))
+	log := &LogEntry{
+		Level:   LogLevelInfo,
+		Message: fmt.Sprintf(format, args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
 func LogInfo(args ...any) {
@@ -67,7 +79,13 @@ func LogInfo(args ...any) {
 }
 
 func LogWarningf(format string, args ...any) {
-	LogWarning(fmt.Sprintf(format, args...))
+	log := &LogEntry{
+		Level:   LogLevelWarning,
+		Message: fmt.Sprintf(format, args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
 func LogWarning(args ...any) {
@@ -81,7 +99,13 @@ func LogWarning(args ...any) {
 }
 
 func LogErrorf(format string, args ...any) {
-	LogError(fmt.Sprintf(format, args...))
+	log := &LogEntry{
+		Level:   LogLevelError,
+		Message: fmt.Sprintf(format, args...),
+		Time:    time.Now(),
+	}
+
+	debugger.emitLog(log)
 }
 
 func LogError(args ...any) {

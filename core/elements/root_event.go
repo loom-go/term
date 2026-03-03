@@ -2,6 +2,8 @@ package elements
 
 import (
 	"context"
+	"slices"
+
 	"github.com/AnatoleLucet/loom-term/core/elements/events"
 )
 
@@ -14,56 +16,50 @@ func (r *RootElement) listenToMouseEvents(ctx context.Context) {
 			return
 
 		case event := <-listenner.Listen(ctx):
-			offsetX, offsetY := r.rdrctx.RenderOffset()
+			r.rdrctx.ScheduleUpdate(func() error {
+				offsetX, offsetY := r.rdrctx.RenderOffset()
 
-			evt := &EventMouse{EventMouse: *event}
+				evt := &EventMouse{EventMouse: *event}
 
-			// normalize coordinate with render offset before using the event
-			evt.Y -= offsetY
-			evt.X -= offsetX
+				// normalize coordinate with render offset before using the event
+				evt.Y -= offsetY
+				evt.X -= offsetX
 
-			target := r.rdrctx.CheckHit(evt.X, evt.Y)
-			if target == nil {
-				target = r
-			}
+				target := r.rdrctx.CheckHit(evt.X, evt.Y)
+				if target == nil {
+					target = r
+				}
 
-			evt.setTarget(target)
-			r.rdrctx.SetMousePosition(evt.X, evt.Y)
+				evt.setTarget(target)
+				r.rdrctx.SetMousePosition(evt.X, evt.Y)
 
-			switch evt.Action {
-			case events.MouseActionPress:
-				r.rdrctx.SetPressedElement(target)
-				r.rdrctx.DispatchEvent(EventTypeMousePress, target, evt)
+				switch evt.Action {
+				case events.MouseActionPress:
+					r.rdrctx.SetPressedElement(target)
+					r.rdrctx.DispatchEvent(EventTypeMousePress, target, evt)
 
-			case events.MouseActionRelease:
-				r.rdrctx.SetPressedElement(nil)
-				r.rdrctx.DispatchEvent(EventTypeMouseRelease, target, evt)
+				case events.MouseActionRelease:
+					r.rdrctx.SetPressedElement(nil)
+					r.rdrctx.DispatchEvent(EventTypeMouseRelease, target, evt)
 
-			case events.MouseActionMove:
-				hovered := r.rdrctx.HoveredElement()
-				if hovered != target {
-					r.rdrctx.SetHoveredElement(target)
+				case events.MouseActionMove:
+					r.updateHover(target, evt)
+					r.rdrctx.DispatchEvent(EventTypeMouseMove, target, evt)
 
-					if hovered != nil {
-						hovered.broadcastEvent(EventTypeMouseLeave, evt)
+				case events.MouseActionScroll:
+					r.rdrctx.DispatchEvent(EventTypeMouseScroll, target, evt)
+
+				case events.MouseActionDrag:
+					pressed := r.rdrctx.PressedElement()
+					if pressed != nil {
+						r.rdrctx.DispatchEvent(EventTypeMouseDrag, pressed, evt)
+					} else {
+						r.rdrctx.DispatchEvent(EventTypeMouseDrag, target, evt)
 					}
-
-					target.broadcastEvent(EventTypeMouseEnter, evt)
 				}
 
-				r.rdrctx.DispatchEvent(EventTypeMouseMove, target, evt)
-
-			case events.MouseActionScroll:
-				r.rdrctx.DispatchEvent(EventTypeMouseScroll, target, evt)
-
-			case events.MouseActionDrag:
-				pressed := r.rdrctx.PressedElement()
-				if pressed != nil {
-					r.rdrctx.DispatchEvent(EventTypeMouseDrag, pressed, evt)
-				} else {
-					r.rdrctx.DispatchEvent(EventTypeMouseDrag, target, evt)
-				}
-			}
+				return nil
+			})
 		}
 	}
 }
@@ -79,20 +75,24 @@ func (r *RootElement) listenToKeyboardEvents(ctx context.Context) {
 				return
 
 			case event := <-listener.ListenKey(ctx):
-				focused := r.rdrctx.FocusedElement()
-				if focused == nil {
-					focused = r
-				}
+				r.rdrctx.ScheduleUpdate(func() error {
+					focused := r.rdrctx.FocusedElement()
+					if focused == nil {
+						focused = r
+					}
 
-				evt := &EventKey{EventKey: *event}
-				evt.setTarget(focused)
+					evt := &EventKey{EventKey: *event}
+					evt.setTarget(focused)
 
-				switch event.Action {
-				case events.KeyActionPress:
-					r.rdrctx.DispatchEvent(EventTypeKeyPress, focused, evt)
-				case events.KeyActionRelease:
-					r.rdrctx.DispatchEvent(EventTypeKeyRelease, focused, evt)
-				}
+					switch event.Action {
+					case events.KeyActionPress:
+						r.rdrctx.DispatchEvent(EventTypeKeyPress, focused, evt)
+					case events.KeyActionRelease:
+						r.rdrctx.DispatchEvent(EventTypeKeyRelease, focused, evt)
+					}
+
+					return nil
+				})
 			}
 		}
 	}()
@@ -105,15 +105,19 @@ func (r *RootElement) listenToKeyboardEvents(ctx context.Context) {
 				return
 
 			case event := <-listener.ListenPaste(ctx):
-				focused := r.rdrctx.FocusedElement()
-				if focused == nil {
-					focused = r
-				}
+				r.rdrctx.ScheduleUpdate(func() error {
+					focused := r.rdrctx.FocusedElement()
+					if focused == nil {
+						focused = r
+					}
 
-				evt := &EventPaste{EventPaste: *event}
-				evt.setTarget(focused)
+					evt := &EventPaste{EventPaste: *event}
+					evt.setTarget(focused)
 
-				r.rdrctx.DispatchEvent(EventTypePaste, focused, evt)
+					r.rdrctx.DispatchEvent(EventTypePaste, focused, evt)
+
+					return nil
+				})
 			}
 		}
 	}()
@@ -233,36 +237,69 @@ func (rc *RenderContext) DispatchEvent(typ EventType, target Element, event any)
 	}
 }
 
-func (rc *RenderContext) RefreshMouseState() {
-	hovered := rc.HoveredElement()
-	target := rc.CheckHit(rc.lastMouseX, rc.lastMouseY)
-	if target == nil {
-		target = rc.root
-	}
-
-	if hovered == target {
+func (r *RootElement) refreshMouseState() {
+	if !r.rdrctx.hasMousePosition {
 		return
 	}
 
+	target := r.rdrctx.CheckHit(r.rdrctx.lastMouseX, r.rdrctx.lastMouseY)
+	if target == nil {
+		target = r
+	}
+
 	evt := &EventMouse{EventMouse: events.EventMouse{
-		X:      rc.lastMouseX,
-		Y:      rc.lastMouseY,
+		X:      r.rdrctx.lastMouseX,
+		Y:      r.rdrctx.lastMouseY,
 		Action: events.MouseActionMove,
 	}}
 	evt.setTarget(target)
 
-	rc.SetHoveredElement(target)
-
-	if hovered != nil {
-		hovered.broadcastEvent(EventTypeMouseLeave, evt)
-	}
-	target.broadcastEvent(EventTypeMouseEnter, evt)
+	r.updateHover(target, evt)
 }
 
+func (r *RootElement) updateHover(target Element, evt *EventMouse) {
+	oldChain := r.rdrctx.HoverChain()
+	newChain := pathFromRoot(target)
+
+	// same hover chain, no need to do anything
+	if slices.Equal(oldChain, newChain) {
+		return
+	}
+
+	// find common ancestor
+	start := 0
+	for i := 0; i < min(len(oldChain), len(newChain)); i++ {
+		if oldChain[i] != newChain[i] {
+			break
+		}
+		start++
+	}
+
+	for i := start; i < len(oldChain); i++ {
+		oldChain[i].broadcastEvent(EventTypeMouseLeave, evt)
+	}
+	for i := start; i < len(newChain); i++ {
+		newChain[i].broadcastEvent(EventTypeMouseEnter, evt)
+	}
+
+	r.rdrctx.SetHoverChain(newChain)
+}
+
+// target -> [target, parent, root]
 func pathToRoot(target Element) []Element {
 	var path []Element
 	for elem := target; elem != nil; elem = elem.Parent() {
 		path = append(path, elem)
+	}
+
+	return path
+}
+
+// target -> [root, parent, target]
+func pathFromRoot(target Element) []Element {
+	var path []Element
+	for elem := target; elem != nil; elem = elem.Parent() {
+		path = append([]Element{elem}, path...)
 	}
 
 	return path

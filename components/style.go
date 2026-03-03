@@ -5,74 +5,79 @@ import (
 	"math"
 )
 
+// Style properties for elements.
+// Values can be of various types and units, each field has a comment for each possible value type.
+//
+// For reactive style, properties can be defined as a function that returns the value.
 type Style struct {
-	Width     any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	MinWidth  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	MaxWidth  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	Height    any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	MinHeight any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	MaxHeight any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
+	Width     any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	MinWidth  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	MaxWidth  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	Height    any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	MinHeight any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	MaxHeight any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
 
-	Top    any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	Bottom any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	Left   any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
-	Right  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
+	Top    any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	Bottom any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	Left   any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
+	Right  any // 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch" | func() any
 
-	ZIndex int // relative to sibling elements
+	ZIndex any // relative to sibling elements
 
-	Position string // "static" | "relative" | "absolute"
+	Position any // "static" | "relative" | "absolute" | func() any
 
-	PaddingAll        any // 10 | "100pt" | "50%"
-	PaddingVertical   any // 10 | "100pt" | "50%"
-	PaddingHorizontal any // 10 | "100pt" | "50%"
-	PaddingTop        any // 10 | "100pt" | "50%"
-	PaddingBottom     any // 10 | "100pt" | "50%"
-	PaddingLeft       any // 10 | "100pt" | "50%"
-	PaddingRight      any // 10 | "100pt" | "50%"
+	PaddingAll        any // 10 | "100pt" | "50%" | func() any
+	PaddingVertical   any // 10 | "100pt" | "50%" | func() any
+	PaddingHorizontal any // 10 | "100pt" | "50%" | func() any
+	PaddingTop        any // 10 | "100pt" | "50%" | func() any
+	PaddingBottom     any // 10 | "100pt" | "50%" | func() any
+	PaddingLeft       any // 10 | "100pt" | "50%" | func() any
+	PaddingRight      any // 10 | "100pt" | "50%" | func() any
 
-	MarginAll        any // 10 | "100pt" | "50%"
-	MarginVertical   any // 10 | "100pt" | "50%"
-	MarginHorizontal any // 10 | "100pt" | "50%"
-	MarginTop        any // 10 | "100pt" | "50%"
-	MarginBottom     any // 10 | "100pt" | "50%"
-	MarginLeft       any // 10 | "100pt" | "50%"
-	MarginRight      any // 10 | "100pt" | "50%"
+	MarginAll        any // 10 | "100pt" | "50%" | func() any
+	MarginVertical   any // 10 | "100pt" | "50%" | func() any
+	MarginHorizontal any // 10 | "100pt" | "50%" | func() any
+	MarginTop        any // 10 | "100pt" | "50%" | func() any
+	MarginBottom     any // 10 | "100pt" | "50%" | func() any
+	MarginLeft       any // 10 | "100pt" | "50%" | func() any
+	MarginRight      any // 10 | "100pt" | "50%" | func() any
 
-	BorderAll        string // "single" | "double" | "rounded"  | "heavy"
-	BorderVertical   string // "single" | "double" | "rounded"  | "heavy"
-	BorderHorizontal string // "single" | "double" | "rounded"  | "heavy"
-	BorderTop        string // "single" | "double" | "rounded"  | "heavy"
-	BorderBottom     string // "single" | "double" | "rounded"  | "heavy"
-	BorderLeft       string // "single" | "double" | "rounded"  | "heavy"
-	BorderRight      string // "single" | "double" | "rounded"  | "heavy"
+	BorderAll        any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderVertical   any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderHorizontal any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderTop        any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderBottom     any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderLeft       any // "single" | "double" | "rounded"  | "heavy" | func() any
+	BorderRight      any // "single" | "double" | "rounded"  | "heavy" | func() any
 
-	Display string // "none" | "flex" | "contents"
+	Display any // "none" | "flex" | "contents" | func() any
 
-	AlignSelf      string // "start" | "end" | "center" | "stretch" | "baseline"
-	AlignItems     string // "start" | "end" | "center" | "stretch" | "baseline"
-	AlignContent   string // "start" | "end" | "center" | "stretch" | "baseline"
-	JustifyContent string // "start" | "end" | "center" | "space-between" | "space-around" | "space-evenly"
-	FlexDirection  string // "row" | "row-reverse" | "column" | "column-reverse"
-	FlexWrap       string // "nowrap" | "wrap" | "wrap-reverse"
-	FlexGrow       string // "none" | "0" | "1" | ...
-	FlexShrink     string // "none" | "0" | "1" | ...
+	AlignSelf      any // "start" | "end" | "center" | "stretch" | "baseline" | func() any
+	AlignItems     any // "start" | "end" | "center" | "stretch" | "baseline" | func() any
+	AlignContent   any // "start" | "end" | "center" | "stretch" | "baseline" | func() any
+	JustifyContent any // "start" | "end" | "center" | "space-between" | "space-around" | "space-evenly" | func() any
+	FlexDirection  any // "row" | "row-reverse" | "column" | "column-reverse" | func() any
+	FlexWrap       any // "nowrap" | "wrap" | "wrap-reverse" | func() any
+	FlexGrow       any // "none" | "0" | "1" | ... | func() any
+	FlexShrink     any // "none" | "0" | "1" | ... | func() any
 
-	GapAll    any // 10 | "100pt" | "50%"
-	GapRow    any // 10 | "100pt" | "50%"
-	GapColumn any // 10 | "100pt" | "50%"
+	GapAll    any // 10 | "100pt" | "50%" | func() any
+	GapRow    any // 10 | "100pt" | "50%" | func() any
+	GapColumn any // 10 | "100pt" | "50%" | func() any
 
-	Overflow string // "visible" | "hidden"
+	Overflow any // "visible" | "hidden" | func() any
 
-	BorderColor string // "transparent" | "#RGB" | "#RRGGBBAA"
+	BorderColor any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
 
-	BackgroundColor string // "transparent" | "#RGB" | "#RRGGBBAA"
+	BackgroundColor   any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
+	BackgroundOpacity any // 0.0 - 1.0 | func() any
 
-	Color          string // "transparent" | "#RGB" | "#RRGGBBAA"
-	DropColor      string // "transparent" | "#RGB" | "#RRGGBBAA"
-	FontWeight     string // "normal" | "bold"
-	FontStyle      string // "normal" | "italic"
-	TextDecoration string // "none" | "underline" | "line-through"
-	TextWrap       string // "none" | "word" | "char"
+	Color          any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
+	DropColor      any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
+	FontWeight     any // "normal" | "bold" | func() any
+	FontStyle      any // "normal" | "italic" | func() any
+	TextDecoration any // "none" | "underline" | "line-through" | func() any
+	TextWrap       any // "none" | "word" | "char" | func() any
 
 }
 
@@ -102,6 +107,9 @@ func HSL(h, s, l float64) string {
 	if h < 0 {
 		h += 360
 	}
+
+	s = s / 100
+	l = l / 100
 
 	c := (1 - math.Abs(2*l-1)) * s
 	x := c * (1 - math.Abs(math.Mod(h/60.0, 2)-1))

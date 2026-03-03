@@ -149,6 +149,7 @@ func newLogsListElement() (*logsListElement, error) {
 	e.SetMaxHeight("100%")
 	e.SetFlexDirection("column")
 	e.SetJustifyContent("end")
+	e.SetScrollFactor(consoleLogsScrollFactor)
 
 	logs, cancel := debug.Logs()
 	e.OnDestroy(cancel)
@@ -177,14 +178,14 @@ func (s *logsListElement) addLog(log *debug.LogEntry) error {
 	message, err := NewTextElement()
 	message.SetText(log.Message)
 
+	if err != nil {
+		return err
+	}
+
 	container.AppendChild(level)
 	container.AppendChild(date)
 	container.AppendChild(message)
 	s.AppendChild(container)
-
-	if err != nil {
-		return err
-	}
 
 	if !s.detached {
 		s.ScrollToBottom()

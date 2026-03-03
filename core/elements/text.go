@@ -62,11 +62,11 @@ func NewTextElement() (text *TextElement, err error) {
 	text.textBufferView = opentui.NewTextBufferView(text.textBuffer)
 	text.textStyle = opentui.NewSyntaxStyle()
 	text.textBuffer.SetSyntaxStyle(text.textStyle)
+	text.textBufferView.SetWrapMode(opentui.WrapModeWord)
 
 	text.xyz().SetMeasureFunc(text.measureFunc)
 	text.SetFlexGrow("0")
 	text.SetFlexShrink("0")
-	text.SetAlignSelf("start")
 
 	text.OnDestroy(func() {
 		// note: text view must be closed before the buffer
@@ -80,6 +80,13 @@ func NewTextElement() (text *TextElement, err error) {
 }
 
 func (t *TextElement) Children() iter.Seq[Element] {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	return t.childrenUnsafe()
+}
+
+func (t *TextElement) childrenUnsafe() iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		for _, child := range t.children {
 			if !yield(child) {
@@ -91,57 +98,80 @@ func (t *TextElement) Children() iter.Seq[Element] {
 
 func (t *TextElement) AppendChild(child Element) {
 	t.scheduleUpdate(func() error {
-		if c, ok := child.(*TextElement); ok {
-			t.mu.Lock()
-			defer t.mu.Unlock()
-
-			if err := guardDestroyed(t.ctx); err != nil {
-				return err
-			}
-
-			if c.parentUnsafe() != nil {
-				return fmt.Errorf("%w: child already has a parent", ErrFailedToAppendChild)
-			}
-
-			t.children = append(t.children, c)
-
-			c.rootText = t.rootTextElement()
-			c.setParentUnsafe(t)
-			c.setContextUnsafe(t.rdrctx)
-
-			t.update()
+		t.mu.Lock()
+		err := t.appendChildUnsafe(child)
+		t.mu.Unlock()
+		if err != nil {
+			return err
 		}
 
+		err = t.flushPendingUpdates()
+		if err != nil {
+			return err
+		}
+
+		t.update()
 		return nil
 	})
 }
 
+func (t *TextElement) appendChildUnsafe(child Element) error {
+	c, ok := child.(*TextElement)
+	if !ok {
+		return nil
+	}
+
+	if err := guardDestroyed(t.ctx); err != nil {
+		return err
+	}
+
+	if c.parentUnsafe() != nil {
+		return fmt.Errorf("%w: child already has a parent", ErrFailedToAppendChild)
+	}
+
+	t.children = append(t.children, c)
+
+	c.rootText = t.rootTextElement()
+	c.setParentUnsafe(t.Self())
+	c.setContextUnsafe(t.rdrctx)
+	return nil
+}
+
 func (t *TextElement) RemoveChild(child Element) {
 	t.scheduleUpdate(func() error {
-		if c, ok := child.(*TextElement); ok {
-			t.mu.Lock()
-			defer t.mu.Unlock()
-
-			if err := guardDestroyed(t.ctx); err != nil {
-				return err
-			}
-
-			i := slices.Index(t.children, c)
-			if i == -1 {
-				return fmt.Errorf("%w: child not found", ErrFailedToRemoveChild)
-			}
-
-			t.children = slices.Delete(t.children, i, i+1)
-
-			c.rootText = nil
-			c.setParentUnsafe(nil)
-			c.setContextUnsafe(nil)
-
-			t.update()
+		t.mu.Lock()
+		err := t.removeChildUnsafe(child)
+		t.mu.Unlock()
+		if err != nil {
+			return err
 		}
 
+		t.update()
 		return nil
 	})
+}
+
+func (t *TextElement) removeChildUnsafe(child Element) error {
+	c, ok := child.(*TextElement)
+	if !ok {
+		return nil
+	}
+
+	if err := guardDestroyed(t.ctx); err != nil {
+		return err
+	}
+
+	i := slices.Index(t.children, c)
+	if i == -1 {
+		return fmt.Errorf("%w: child not found", ErrFailedToRemoveChild)
+	}
+
+	t.children = slices.Delete(t.children, i, i+1)
+
+	c.rootText = nil
+	c.setParentUnsafe(nil)
+	c.setContextUnsafe(nil)
+	return nil
 }
 
 func (t *TextElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) error {
@@ -157,6 +187,7 @@ func (t *TextElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) error {
 }
 
 func (t *TextElement) Render(buffer *opentui.Buffer, rect gfx.Rect) error {
+	t.textBufferView.SetWrapWidth(uint32(rect.Width))
 	return buffer.DrawTextBufferView(t.textBufferView, int32(rect.X), int32(rect.Y))
 }
 

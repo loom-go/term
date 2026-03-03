@@ -4,9 +4,23 @@ import (
 	"context"
 
 	"github.com/AnatoleLucet/loom"
+	"github.com/AnatoleLucet/loom-term/core"
 	"github.com/AnatoleLucet/loom-term/internal/app"
 	. "github.com/AnatoleLucet/loom/components"
 )
+
+type Element = core.Element
+
+func Root() Element {
+	ctx, err := app.GetContext()
+	if err != nil {
+		// fine to panic because this can only be called in the reactive system.
+		// else we have a reason to *panic*
+		panic("term.Root: " + err.Error())
+	}
+
+	return ctx.Root()
+}
 
 type rootNode struct {
 	ctx    context.Context

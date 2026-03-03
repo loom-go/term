@@ -1,35 +1,48 @@
 package components
 
 import (
+	"reflect"
 	"slices"
 
 	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/AnatoleLucet/loom/signals"
 )
 
+// todo: that's not concurency safe. prob will need to be
+
 type styleLayer struct {
-	id    uint32
-	style Style
+	id      uint32
+	event   string
+	styles  []Style
+	visible bool
 }
 
 type styleStack struct {
-	layers []styleLayer
+	layers []*styleLayer
 }
 
-func (s *styleStack) Push(id uint32, style Style) {
-	s.layers = append(s.layers, styleLayer{id, style})
+func (s *styleStack) Push(layer *styleLayer) {
+	s.layers = append(s.layers, layer)
 }
 
-func (s *styleStack) Replace(id uint32, style Style) {
-	for i, layer := range s.layers {
-		if layer.id == id {
-			s.layers[i].style = style
-			return
-		}
+func (s *styleStack) Replace(id uint32, styles []Style) {
+	i := slices.IndexFunc(s.layers, func(layer *styleLayer) bool {
+		return layer.id == id
+	})
+	if i == -1 {
+		return
 	}
+
+	// remove old layer and add new one at the end to update its priority
+	s.layers = append(slices.Delete(s.layers, i, i+1), &styleLayer{
+		id:      id,
+		styles:  styles,
+		visible: true,
+	})
 }
 
 func (s *styleStack) Pop(id uint32) {
-	s.layers = slices.DeleteFunc(s.layers, func(layer styleLayer) bool {
+	s.layers = slices.DeleteFunc(s.layers, func(layer *styleLayer) bool {
 		return layer.id == id
 	})
 }
@@ -46,15 +59,8 @@ func getStyleStack(elem core.Element) *styleStack {
 	return stack
 }
 
-func applyStyleStack(elem core.Element) {
-	stack := getStyleStack(elem)
-
-	for _, layer := range stack.layers {
-		applyStyle(elem, &layer.style)
-	}
-}
-
-func applyStyle(elem core.Element, style *Style) {
+// todo: return ok wether it applied any style or not, so that we can avoid unnecessary renders
+func applyStyle(elem core.Element, style Style) {
 	applyStyleDimension(elem, style)
 	applyStylePositionning(elem, style)
 	applyStyleSpacing(elem, style)
@@ -66,234 +72,214 @@ func applyStyle(elem core.Element, style *Style) {
 	applyStyleText(elem, style)
 }
 
-func applyStyleDimension(elem core.Element, style *Style) {
-	if style.Width != nil {
-		elem.SetWidth(style.Width)
+func applyStyleDimension(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetWidth(any) }, any](elem, style.Width); ok {
+		e.SetWidth(v)
 	}
-	if style.MinWidth != nil {
-		elem.SetMinWidth(style.MinWidth)
+	if e, v, ok := assertSetter[interface{ SetMinWidth(any) }, any](elem, style.MinWidth); ok {
+		e.SetMinWidth(v)
 	}
-	if style.MaxWidth != nil {
-		elem.SetMaxWidth(style.MaxWidth)
+	if e, v, ok := assertSetter[interface{ SetMaxWidth(any) }, any](elem, style.MaxWidth); ok {
+		e.SetMaxWidth(v)
 	}
 
-	if style.Height != nil {
-		elem.SetHeight(style.Height)
+	if e, v, ok := assertSetter[interface{ SetHeight(any) }, any](elem, style.Height); ok {
+		e.SetHeight(v)
 	}
-	if style.MinHeight != nil {
-		elem.SetMinHeight(style.MinHeight)
+	if e, v, ok := assertSetter[interface{ SetMinHeight(any) }, any](elem, style.MinHeight); ok {
+		e.SetMinHeight(v)
 	}
-	if style.MaxHeight != nil {
-		elem.SetMaxHeight(style.MaxHeight)
+	if e, v, ok := assertSetter[interface{ SetMaxHeight(any) }, any](elem, style.MaxHeight); ok {
+		e.SetMaxHeight(v)
 	}
 }
 
-func applyStylePositionning(elem core.Element, style *Style) {
-	if style.Top != nil {
-		elem.SetTop(style.Top)
+func applyStylePositionning(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetTop(any) }, any](elem, style.Top); ok {
+		e.SetTop(v)
 	}
-	if style.Bottom != nil {
-		elem.SetBottom(style.Bottom)
+	if e, v, ok := assertSetter[interface{ SetBottom(any) }, any](elem, style.Bottom); ok {
+		e.SetBottom(v)
 	}
-	if style.Left != nil {
-		elem.SetLeft(style.Left)
+	if e, v, ok := assertSetter[interface{ SetLeft(any) }, any](elem, style.Left); ok {
+		e.SetLeft(v)
 	}
-	if style.Right != nil {
-		elem.SetRight(style.Right)
-	}
-
-	if elem.ZIndex() != style.ZIndex {
-		elem.SetZIndex(style.ZIndex)
+	if e, v, ok := assertSetter[interface{ SetRight(any) }, any](elem, style.Right); ok {
+		e.SetRight(v)
 	}
 
-	if style.Position != "" {
-		elem.SetPosition(style.Position)
+	if e, v, ok := assertSetter[interface{ SetZIndex(int) }, int](elem, style.ZIndex); ok {
+		e.SetZIndex(v)
+	}
+
+	if e, v, ok := assertSetter[interface{ SetPosition(string) }, string](elem, style.Position); ok && v != "" {
+		e.SetPosition(v)
 	}
 }
 
-func applyStyleSpacing(elem core.Element, style *Style) {
-	if style.PaddingAll != nil {
-		elem.SetPaddingAll(style.PaddingAll)
+func applyStyleSpacing(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetPaddingAll(any) }, any](elem, style.PaddingAll); ok {
+		e.SetPaddingAll(v)
 	}
-	if style.PaddingVertical != nil {
-		elem.SetPaddingVertical(style.PaddingVertical)
+	if e, v, ok := assertSetter[interface{ SetPaddingVertical(any) }, any](elem, style.PaddingVertical); ok {
+		e.SetPaddingVertical(v)
 	}
-	if style.PaddingHorizontal != nil {
-		elem.SetPaddingHorizontal(style.PaddingHorizontal)
+	if e, v, ok := assertSetter[interface{ SetPaddingHorizontal(any) }, any](elem, style.PaddingHorizontal); ok {
+		e.SetPaddingHorizontal(v)
 	}
-	if style.PaddingTop != nil {
-		elem.SetPaddingTop(style.PaddingTop)
+	if e, v, ok := assertSetter[interface{ SetPaddingTop(any) }, any](elem, style.PaddingTop); ok {
+		e.SetPaddingTop(v)
 	}
-	if style.PaddingBottom != nil {
-		elem.SetPaddingBottom(style.PaddingBottom)
+	if e, v, ok := assertSetter[interface{ SetPaddingBottom(any) }, any](elem, style.PaddingBottom); ok {
+		e.SetPaddingBottom(v)
 	}
-	if style.PaddingLeft != nil {
-		elem.SetPaddingLeft(style.PaddingLeft)
+	if e, v, ok := assertSetter[interface{ SetPaddingLeft(any) }, any](elem, style.PaddingLeft); ok {
+		e.SetPaddingLeft(v)
 	}
-	if style.PaddingRight != nil {
-		elem.SetPaddingRight(style.PaddingRight)
-	}
-
-	if style.MarginAll != nil {
-		elem.SetMarginAll(style.MarginAll)
-	}
-	if style.MarginVertical != nil {
-		elem.SetMarginVertical(style.MarginVertical)
-	}
-	if style.MarginHorizontal != nil {
-		elem.SetMarginHorizontal(style.MarginHorizontal)
-	}
-	if style.MarginTop != nil {
-		elem.SetMarginTop(style.MarginTop)
-	}
-	if style.MarginBottom != nil {
-		elem.SetMarginBottom(style.MarginBottom)
-	}
-	if style.MarginLeft != nil {
-		elem.SetMarginLeft(style.MarginLeft)
-	}
-	if style.MarginRight != nil {
-		elem.SetMarginRight(style.MarginRight)
+	if e, v, ok := assertSetter[interface{ SetPaddingRight(any) }, any](elem, style.PaddingRight); ok {
+		e.SetPaddingRight(v)
 	}
 
-	if style.GapAll != nil {
-		elem.SetGapAll(style.GapAll)
+	if e, v, ok := assertSetter[interface{ SetMarginAll(any) }, any](elem, style.MarginAll); ok {
+		e.SetMarginAll(v)
 	}
-	if style.GapRow != nil {
-		elem.SetGapRow(style.GapRow)
+	if e, v, ok := assertSetter[interface{ SetMarginVertical(any) }, any](elem, style.MarginVertical); ok {
+		e.SetMarginVertical(v)
 	}
-	if style.GapColumn != nil {
-		elem.SetGapColumn(style.GapColumn)
+	if e, v, ok := assertSetter[interface{ SetMarginHorizontal(any) }, any](elem, style.MarginHorizontal); ok {
+		e.SetMarginHorizontal(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetMarginTop(any) }, any](elem, style.MarginTop); ok {
+		e.SetMarginTop(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetMarginBottom(any) }, any](elem, style.MarginBottom); ok {
+		e.SetMarginBottom(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetMarginLeft(any) }, any](elem, style.MarginLeft); ok {
+		e.SetMarginLeft(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetMarginRight(any) }, any](elem, style.MarginRight); ok {
+		e.SetMarginRight(v)
+	}
+
+	if e, v, ok := assertSetter[interface{ SetGapAll(any) }, any](elem, style.GapAll); ok {
+		e.SetGapAll(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetGapRow(any) }, any](elem, style.GapRow); ok {
+		e.SetGapRow(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetGapColumn(any) }, any](elem, style.GapColumn); ok {
+		e.SetGapColumn(v)
 	}
 }
 
-func applyStyleBorder(elem core.Element, style *Style) {
-	if style.BorderAll != "" {
-		if n, ok := elem.(interface{ SetBorderAll(string) }); ok {
-			n.SetBorderAll(style.BorderAll)
-		}
+func applyStyleBorder(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetBorderAll(string) }, string](elem, style.BorderAll); ok && v != "" {
+		e.SetBorderAll(v)
 	}
-	if style.BorderVertical != "" {
-		if n, ok := elem.(interface{ SetBorderVertical(string) }); ok {
-			n.SetBorderVertical(style.BorderVertical)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderVertical(string) }, string](elem, style.BorderVertical); ok && v != "" {
+		e.SetBorderVertical(v)
 	}
-	if style.BorderHorizontal != "" {
-		if n, ok := elem.(interface{ SetBorderHorizontal(string) }); ok {
-			n.SetBorderHorizontal(style.BorderHorizontal)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderHorizontal(string) }, string](elem, style.BorderHorizontal); ok && v != "" {
+		e.SetBorderHorizontal(v)
 	}
-	if style.BorderTop != "" {
-		if n, ok := elem.(interface{ SetBorderTop(string) }); ok {
-			n.SetBorderTop(style.BorderTop)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderTop(string) }, string](elem, style.BorderTop); ok && v != "" {
+		e.SetBorderTop(v)
 	}
-	if style.BorderBottom != "" {
-		if n, ok := elem.(interface{ SetBorderBottom(string) }); ok {
-			n.SetBorderBottom(style.BorderBottom)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderBottom(string) }, string](elem, style.BorderBottom); ok && v != "" {
+		e.SetBorderBottom(v)
 	}
-	if style.BorderLeft != "" {
-		if n, ok := elem.(interface{ SetBorderLeft(string) }); ok {
-			n.SetBorderLeft(style.BorderLeft)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderLeft(string) }, string](elem, style.BorderLeft); ok && v != "" {
+		e.SetBorderLeft(v)
 	}
-	if style.BorderRight != "" {
-		if n, ok := elem.(interface{ SetBorderRight(string) }); ok {
-			n.SetBorderRight(style.BorderRight)
-		}
+	if e, v, ok := assertSetter[interface{ SetBorderRight(string) }, string](elem, style.BorderRight); ok && v != "" {
+		e.SetBorderRight(v)
 	}
 }
 
-func applyStyleDisplay(elem core.Element, style *Style) {
-	if style.Display != "" {
-		elem.SetDisplay(style.Display)
+func applyStyleDisplay(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetDisplay(string) }, string](elem, style.Display); ok && v != "" {
+		e.SetDisplay(v)
 	}
 }
 
-func applyStyleFlexbox(elem core.Element, style *Style) {
-	if style.AlignSelf != "" {
-		elem.SetAlignSelf(style.AlignSelf)
+func applyStyleFlexbox(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetAlignSelf(string) }, string](elem, style.AlignSelf); ok && v != "" {
+		e.SetAlignSelf(v)
 	}
-	if style.AlignItems != "" {
-		elem.SetAlignItems(style.AlignItems)
+	if e, v, ok := assertSetter[interface{ SetAlignItems(string) }, string](elem, style.AlignItems); ok && v != "" {
+		e.SetAlignItems(v)
 	}
-	if style.AlignContent != "" {
-		elem.SetAlignContent(style.AlignContent)
-	}
-
-	if style.JustifyContent != "" {
-		elem.SetJustifyContent(style.JustifyContent)
+	if e, v, ok := assertSetter[interface{ SetAlignContent(string) }, string](elem, style.AlignContent); ok && v != "" {
+		e.SetAlignContent(v)
 	}
 
-	if style.FlexDirection != "" {
-		elem.SetFlexDirection(style.FlexDirection)
+	if e, v, ok := assertSetter[interface{ SetJustifyContent(string) }, string](elem, style.JustifyContent); ok && v != "" {
+		e.SetJustifyContent(v)
 	}
 
-	if style.FlexWrap != "" {
-		elem.SetFlexWrap(style.FlexWrap)
+	if e, v, ok := assertSetter[interface{ SetFlexDirection(string) }, string](elem, style.FlexDirection); ok && v != "" {
+		e.SetFlexDirection(v)
 	}
 
-	if style.FlexGrow != "" {
-		elem.SetFlexGrow(style.FlexGrow)
+	if e, v, ok := assertSetter[interface{ SetFlexWrap(string) }, string](elem, style.FlexWrap); ok && v != "" {
+		e.SetFlexWrap(v)
 	}
-	if style.FlexShrink != "" {
-		elem.SetFlexShrink(style.FlexShrink)
+
+	if e, v, ok := assertSetter[interface{ SetFlexGrow(string) }, string](elem, style.FlexGrow); ok && v != "" {
+		e.SetFlexGrow(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetFlexShrink(string) }, string](elem, style.FlexShrink); ok && v != "" {
+		e.SetFlexShrink(v)
 	}
 }
 
-func applyStyleOverflow(elem core.Element, style *Style) {
-	if style.Overflow != "" {
-		elem.SetOverflow(style.Overflow)
+func applyStyleOverflow(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetOverflow(string) }, string](elem, style.Overflow); ok && v != "" {
+		e.SetOverflow(v)
 	}
 }
 
-func applyStyleBackground(elem core.Element, style *Style) {
-	if style.BackgroundColor != "" {
-		if n, ok := elem.(interface{ SetBackgroundColor(string) }); ok {
-			n.SetBackgroundColor(style.BackgroundColor)
-		} else if n, ok := elem.(interface{ SetTextBackground(string) }); ok && style.DropColor == "" {
-			n.SetTextBackground(style.BackgroundColor)
+func applyStyleBackground(elem core.Element, style Style) {
+	if style.BackgroundColor != nil {
+		if e, v, ok := assertSetter[interface{ SetBackgroundColor(string) }, string](elem, style.BackgroundColor); ok && v != "" {
+			e.SetBackgroundColor(v)
+		} else if e, v, ok := assertSetter[interface{ SetTextBackground(string) }, string](elem, style.BackgroundColor); ok && v != "" && style.DropColor == nil {
+			e.SetTextBackground(v)
+		}
+	}
+
+	if style.BackgroundOpacity != nil {
+		if e, v, ok := assertSetter[interface{ SetBackgroundOpacity(float32) }, float32](elem, style.BackgroundOpacity); ok {
+			e.SetBackgroundOpacity(v)
 		}
 	}
 }
 
-func applyStyleText(elem core.Element, style *Style) {
-	if style.Color != "" {
-		if n, ok := elem.(interface{ SetTextForeground(string) }); ok {
-			n.SetTextForeground(style.Color)
-		}
+func applyStyleText(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetTextForeground(string) }, string](elem, style.Color); ok && v != "" {
+		e.SetTextForeground(v)
 	}
-	if style.DropColor != "" {
-		if n, ok := elem.(interface{ SetTextBackground(string) }); ok {
-			n.SetTextBackground(style.DropColor)
-		}
+	if e, v, ok := assertSetter[interface{ SetTextBackground(string) }, string](elem, style.DropColor); ok && v != "" {
+		e.SetTextBackground(v)
 	}
 
-	if style.FontWeight != "" {
-		if n, ok := elem.(interface{ SetFontWeight(string) }); ok {
-			n.SetFontWeight(style.FontWeight)
-		}
+	if e, v, ok := assertSetter[interface{ SetFontWeight(string) }, string](elem, style.FontWeight); ok && v != "" {
+		e.SetFontWeight(v)
 	}
-	if style.FontStyle != "" {
-		if n, ok := elem.(interface{ SetFontStyle(string) }); ok {
-			n.SetFontStyle(style.FontStyle)
-		}
+	if e, v, ok := assertSetter[interface{ SetFontStyle(string) }, string](elem, style.FontStyle); ok && v != "" {
+		e.SetFontStyle(v)
 	}
 
-	if style.TextDecoration != "" {
-		if n, ok := elem.(interface{ SetTextDecoration(string) }); ok {
-			n.SetTextDecoration(style.TextDecoration)
-		}
+	if e, v, ok := assertSetter[interface{ SetTextDecoration(string) }, string](elem, style.TextDecoration); ok && v != "" {
+		e.SetTextDecoration(v)
 	}
-	if style.TextWrap != "" {
-		if n, ok := elem.(interface{ SetWrap(string) }); ok {
-			n.SetWrap(style.TextWrap)
-		}
+	if e, v, ok := assertSetter[interface{ SetWrap(string) }, string](elem, style.TextWrap); ok && v != "" {
+		e.SetWrap(v)
 	}
 }
 
-func removeStyle(elem core.Element, style *Style) {
+func removeStyle(elem core.Element, style Style) {
 	removeStyleDimension(elem, style)
 	removeStylePositionning(elem, style)
 	removeStyleSpacing(elem, style)
@@ -305,7 +291,7 @@ func removeStyle(elem core.Element, style *Style) {
 	removeStyleText(elem, style)
 }
 
-func removeStyleDimension(elem core.Element, style *Style) {
+func removeStyleDimension(elem core.Element, style Style) {
 	if style.Width != nil {
 		elem.UnsetWidth()
 	}
@@ -328,7 +314,7 @@ func removeStyleDimension(elem core.Element, style *Style) {
 
 }
 
-func removeStylePositionning(elem core.Element, style *Style) {
+func removeStylePositionning(elem core.Element, style Style) {
 	if style.Top != nil {
 		elem.UnsetTop()
 	}
@@ -342,16 +328,16 @@ func removeStylePositionning(elem core.Element, style *Style) {
 		elem.UnsetRight()
 	}
 
-	if style.ZIndex != 0 {
+	if style.ZIndex != nil {
 		elem.UnsetZIndex()
 	}
 
-	if style.Position != "" {
+	if style.Position != nil {
 		elem.UnsetPosition()
 	}
 }
 
-func removeStyleSpacing(elem core.Element, style *Style) {
+func removeStyleSpacing(elem core.Element, style Style) {
 	if style.PaddingAll != nil {
 		elem.UnsetPaddingAll()
 	}
@@ -407,125 +393,175 @@ func removeStyleSpacing(elem core.Element, style *Style) {
 	}
 }
 
-func removeStyleBorder(elem core.Element, style *Style) {
-	if style.BorderAll != "" {
+func removeStyleBorder(elem core.Element, style Style) {
+	if style.BorderAll != nil {
 		if n, ok := elem.(interface{ UnsetBorderAll() }); ok {
 			n.UnsetBorderAll()
 		}
 	}
-	if style.BorderVertical != "" {
+	if style.BorderVertical != nil {
 		if n, ok := elem.(interface{ UnsetBorderVertical() }); ok {
 			n.UnsetBorderVertical()
 		}
 	}
-	if style.BorderHorizontal != "" {
+	if style.BorderHorizontal != nil {
 		if n, ok := elem.(interface{ UnsetBorderHorizontal() }); ok {
 			n.UnsetBorderHorizontal()
 		}
 	}
-	if style.BorderTop != "" {
+	if style.BorderTop != nil {
 		if n, ok := elem.(interface{ UnsetBorderTop() }); ok {
 			n.UnsetBorderTop()
 		}
 	}
-	if style.BorderBottom != "" {
+	if style.BorderBottom != nil {
 		if n, ok := elem.(interface{ UnsetBorderBottom() }); ok {
 			n.UnsetBorderBottom()
 		}
 	}
-	if style.BorderLeft != "" {
+	if style.BorderLeft != nil {
 		if n, ok := elem.(interface{ UnsetBorderLeft() }); ok {
 			n.UnsetBorderLeft()
 		}
 	}
-	if style.BorderRight != "" {
+	if style.BorderRight != nil {
 		if n, ok := elem.(interface{ UnsetBorderRight() }); ok {
 			n.UnsetBorderRight()
 		}
 	}
 }
 
-func removeStyleDisplay(elem core.Element, style *Style) {
-	if style.Display != "" {
+func removeStyleDisplay(elem core.Element, style Style) {
+	if style.Display != nil {
 		elem.UnsetDisplay()
 	}
 }
 
-func removeStyleFlexbox(elem core.Element, style *Style) {
-	if style.AlignSelf != "" {
+func removeStyleFlexbox(elem core.Element, style Style) {
+	if style.AlignSelf != nil {
 		elem.UnsetAlignSelf()
 	}
-	if style.AlignItems != "" {
+	if style.AlignItems != nil {
 		elem.UnsetAlignItems()
 	}
-	if style.AlignContent != "" {
+	if style.AlignContent != nil {
 		elem.UnsetAlignContent()
 	}
 
-	if style.JustifyContent != "" {
+	if style.JustifyContent != nil {
 		elem.UnsetJustifyContent()
 	}
-	if style.FlexDirection != "" {
+	if style.FlexDirection != nil {
 		elem.UnsetFlexDirection()
 	}
-	if style.FlexWrap != "" {
+	if style.FlexWrap != nil {
 		elem.UnsetFlexWrap()
 	}
-	if style.FlexGrow != "" {
+	if style.FlexGrow != nil {
 		elem.UnsetFlexGrow()
 	}
-	if style.FlexShrink != "" {
+	if style.FlexShrink != nil {
 		elem.UnsetFlexShrink()
 	}
 }
 
-func removeStyleOverflow(elem core.Element, style *Style) {
-	if style.Overflow != "" {
+func removeStyleOverflow(elem core.Element, style Style) {
+	if style.Overflow != nil {
 		elem.UnsetOverflow()
 	}
 }
 
-func removeStyleBackground(elem core.Element, style *Style) {
-	if style.BackgroundColor != "" {
+func removeStyleBackground(elem core.Element, style Style) {
+	if style.BackgroundColor != nil {
 		if n, ok := elem.(interface{ UnsetBackgroundColor() }); ok {
 			n.UnsetBackgroundColor()
 		} else if n, ok := elem.(interface{ UnsetTextBackground() }); ok && style.DropColor == "" {
 			n.UnsetTextBackground()
 		}
 	}
+
+	if style.BackgroundOpacity != nil {
+		if n, ok := elem.(interface{ UnsetBackgroundOpacity() }); ok {
+			n.UnsetBackgroundOpacity()
+		}
+	}
 }
 
-func removeStyleText(elem core.Element, style *Style) {
-	if style.Color != "" {
+func removeStyleText(elem core.Element, style Style) {
+	if style.Color != nil {
 		if n, ok := elem.(interface{ UnsetForegroundColor() }); ok {
 			n.UnsetForegroundColor()
 		}
 	}
-	if style.DropColor != "" {
+	if style.DropColor != nil {
 		if n, ok := elem.(interface{ UnsetTextBackground() }); ok {
 			n.UnsetTextBackground()
 		}
 	}
 
-	if style.FontWeight != "" {
+	if style.FontWeight != nil {
 		if n, ok := elem.(interface{ UnsetFontWeight() }); ok {
 			n.UnsetFontWeight()
 		}
 	}
-	if style.FontStyle != "" {
+	if style.FontStyle != nil {
 		if n, ok := elem.(interface{ UnsetFontStyle() }); ok {
 			n.UnsetFontStyle()
 		}
 	}
 
-	if style.TextDecoration != "" {
+	if style.TextDecoration != nil {
 		if n, ok := elem.(interface{ UnsetTextDecoration() }); ok {
 			n.UnsetTextDecoration()
 		}
 	}
-	if style.TextWrap != "" {
+	if style.TextWrap != nil {
 		if n, ok := elem.(interface{ UnsetWrap() }); ok {
 			n.UnsetWrap()
 		}
 	}
+}
+
+func assertSetter[E, V any](elem core.Element, value any) (E, V, bool) {
+	var v V
+	var vok bool
+	var e E
+	var eok bool
+
+	if sig, ok := value.(func() V); ok {
+		value = sig()
+	} else if fn, ok := value.(func() any); ok {
+		value = fn()
+	} else if fn, ok := value.(signals.Accessor[V]); ok {
+		value = fn()
+	} else if fn, ok := value.(signals.Accessor[any]); ok {
+		value = fn()
+	} else {
+		// fallback to reflect for calling the accessor
+		rv := reflect.ValueOf(value)
+		isFunc := rv.Kind() == reflect.Func
+		if isFunc && rv.Type().NumIn() == 0 && rv.Type().NumOut() == 1 {
+			value = rv.Call(nil)[0].Interface()
+		}
+	}
+
+	if val, ok := value.(V); ok {
+		v = val
+		vok = true
+	} else {
+		// fallback to reflect for converting the value
+		rv := reflect.ValueOf(value)
+		target := reflect.TypeFor[V]()
+		if rv.IsValid() && rv.Type().ConvertibleTo(target) {
+			v = rv.Convert(target).Interface().(V)
+			vok = true
+		}
+	}
+
+	if elem, ok := elem.(E); ok {
+		e = elem
+		eok = true
+	}
+
+	return e, v, eok && vok
 }

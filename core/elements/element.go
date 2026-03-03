@@ -22,7 +22,8 @@ type Element interface {
 type ElementTree interface {
 	lock()
 	unlock()
-	setContextUnsafe(*RenderContext) error
+	setContextUnsafe(*RenderContext)
+	flushPendingUpdates() error
 
 	ID() uint32
 

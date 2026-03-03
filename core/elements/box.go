@@ -336,6 +336,32 @@ func (e *BoxElement) UnsetBackgroundColor() {
 	})
 }
 
+func (e *BoxElement) SetBackgroundOpacity(opacity float32) {
+	e.scheduleUpdate(func() error {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+
+		if err := guardDestroyed(e.ctx); err != nil {
+			return err
+		}
+
+		return e.backgroundColor.SetOpacity(opacity)
+	})
+}
+
+func (e *BoxElement) UnsetBackgroundOpacity() {
+	e.scheduleUpdate(func() error {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+
+		if err := guardDestroyed(e.ctx); err != nil {
+			return err
+		}
+
+		return e.backgroundColor.UnsetOpacity()
+	})
+}
+
 func (b *BoxElement) Render(buffer *opentui.Buffer, rect gfx.Rect) error {
 	borderColor := b.borderColor.RGBA()
 	backgroundColor := b.backgroundColor.RGBA()

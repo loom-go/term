@@ -1,6 +1,7 @@
 package animate
 
 import (
+	"context"
 	"time"
 )
 
@@ -8,14 +9,19 @@ import (
 
 // A represents an animation that can be run with Run.
 type A struct {
+	Context  context.Context
 	Duration time.Duration
 	Tick     func(progress float64)
-	Pacer    *FramePacer
+	Pacer    *Pacer
+}
+
+func (a A) Run() {
+	Run(a)
 }
 
 // Run executes the given animation A and blocks until it is complete.
 func Run(a A) {
-	var pacer *FramePacer
+	var pacer *Pacer
 	if a.Pacer != nil {
 		pacer = a.Pacer
 	} else {
@@ -26,6 +32,12 @@ func Run(a A) {
 	finite := a.Duration > 0
 
 	for {
+		select {
+		case <-a.Context.Done():
+			return
+		default:
+		}
+
 		pacer.Pace(func(now time.Time) {
 			elapsed := max(0, now.Sub(start))
 

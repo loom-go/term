@@ -119,7 +119,7 @@ func (b *BaseElement) SetParent(parent Element) {
 		b.mu.Lock()
 		defer b.mu.Unlock()
 
-		return b.setParentUnsafe(parent)
+		return b.Self().setParentUnsafe(parent)
 	})
 }
 
@@ -136,7 +136,7 @@ func (b *BaseElement) Children() iter.Seq[Element] {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	return b.childrenUnsafe()
+	return b.Self().childrenUnsafe()
 }
 
 func (b *BaseElement) childrenUnsafe() iter.Seq[Element] {
@@ -155,9 +155,13 @@ func (b *BaseElement) childrenUnsafe() iter.Seq[Element] {
 func (b *BaseElement) AppendChild(child Element) {
 	b.scheduleUpdate(func() error {
 		b.mu.Lock()
-		defer b.mu.Unlock()
+		err := b.Self().appendChildUnsafe(child)
+		b.mu.Unlock()
+		if err != nil {
+			return err
+		}
 
-		return b.appendChildUnsafe(child)
+		return b.Self().flushPendingUpdates()
 	})
 }
 
@@ -175,8 +179,9 @@ func (b *BaseElement) appendChildUnsafe(child Element) error {
 	zindex := child.zindexUnsafe()
 	b.children[zindex] = append(b.children[zindex], child)
 
-	child.setParentUnsafe(b)
-	return child.setContextUnsafe(b.rdrctx)
+	child.setParentUnsafe(b.Self())
+	child.setContextUnsafe(b.rdrctx)
+	return nil
 }
 
 func (b *BaseElement) RemoveChild(child Element) {
@@ -184,7 +189,7 @@ func (b *BaseElement) RemoveChild(child Element) {
 		b.mu.Lock()
 		defer b.mu.Unlock()
 
-		return b.removeChildUnsafe(child)
+		return b.Self().removeChildUnsafe(child)
 	})
 }
 
@@ -208,7 +213,8 @@ func (b *BaseElement) removeChildUnsafe(child Element) error {
 	b.children[zindex] = slices.Delete(children, i, i+1)
 
 	child.setParentUnsafe(nil)
-	return child.setContextUnsafe(nil)
+	child.setContextUnsafe(nil)
+	return nil
 }
 
 func (b *BaseElement) Focus() {
@@ -224,7 +230,7 @@ func (b *BaseElement) Focus() {
 			b.mu.Unlock()
 			return nil
 		}
-		b.setFocused(true)
+		b.Self().setFocused(true)
 
 		prev := b.rdrctx.FocusedElement()
 		if prev != nil {
@@ -236,7 +242,7 @@ func (b *BaseElement) Focus() {
 
 		focusEvt := &EventFocus{Blurred: prev}
 		focusEvt.setTarget(b.Self())
-		b.broadcastEvent(EventTypeFocus, focusEvt)
+		b.Self().broadcastEvent(EventTypeFocus, focusEvt)
 		if prev != nil {
 			blurEvt := &EventBlur{Focused: b.Self()}
 			blurEvt.setTarget(prev)
@@ -267,7 +273,7 @@ func (b *BaseElement) Blur() {
 
 		evt := &EventBlur{Focused: b.Self()}
 		evt.setTarget(b.Self())
-		b.broadcastEvent(EventTypeBlur, evt)
+		b.Self().broadcastEvent(EventTypeBlur, evt)
 
 		return nil
 	})
@@ -290,7 +296,7 @@ func (b *BaseElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) error {
 		defer cb.Add(gfx.NewCommand(gfx.CmdPopOverflowScissors, self))
 	}
 
-	for child := range b.childrenUnsafe() {
+	for child := range b.Self().childrenUnsafe() {
 		err := child.Record(cb, rect)
 		if err != nil {
 			return err
@@ -319,17 +325,17 @@ func (b *BaseElement) Destroy() {
 		}
 		b.mu.Unlock()
 
-		b.destroyUnsafe()
+		b.Self().destroyUnsafe()
 		return nil
 	})
 }
 
 func (b *BaseElement) destroyUnsafe() {
-	for child := range b.childrenUnsafe() {
+	for child := range b.Self().childrenUnsafe() {
 		child.destroyUnsafe()
 	}
 
-	b.broadcastEvent(EventTypeDestroy, nil)
+	b.Self().broadcastEvent(EventTypeDestroy, nil)
 }
 
 func (b *BaseElement) rect(container gfx.Rect) gfx.Rect {
@@ -377,7 +383,7 @@ func (b *BaseElement) setFocusable() (unset func()) {
 	b.mu.Unlock()
 
 	remove := b.mousePressAction(func(e *EventMouse) {
-		b.Focus()
+		b.Self().Focus()
 		b.rdrctx.ScheduleRender()
 	})
 
@@ -389,23 +395,33 @@ func (b *BaseElement) setFocusable() (unset func()) {
 	}
 }
 
-func (b *BaseElement) setContextUnsafe(ctx *RenderContext) error {
+func (b *BaseElement) setContextUnsafe(ctx *RenderContext) {
 	b.rdrctx = ctx
 	b.BaseElementStyle.rdrctx = ctx
 	b.BaseElementEvent.rdrctx = ctx
 
-	for child := range b.childrenUnsafe() {
+	for child := range b.Self().childrenUnsafe() {
 		child.lock()
 		child.setContextUnsafe(ctx)
 		child.unlock()
 	}
+}
 
-	for _, pending := range b.pendingUpdates {
+func (b *BaseElement) flushPendingUpdates() error {
+	for child := range b.Self().childrenUnsafe() {
+		child.flushPendingUpdates()
+	}
+
+	b.mu.Lock()
+	updates := b.pendingUpdates
+	b.pendingUpdates = nil
+	b.mu.Unlock()
+
+	for _, pending := range updates {
 		if err := pending(); err != nil {
 			return err
 		}
 	}
-	b.pendingUpdates = nil
 
 	return nil
 }

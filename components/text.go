@@ -5,51 +5,135 @@ import (
 
 	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/core/elements"
 	"github.com/AnatoleLucet/loom-term/internal/app"
 	. "github.com/AnatoleLucet/loom/components"
 )
 
-func Text(content any, styles ...loom.Node) loom.Node {
+func Text(content any, styles ...*applyNode) loom.Node {
+	children := make([]loom.Node, len(styles))
+	for i, style := range styles {
+		children[i] = style
+	}
+
 	return &textNode{
-		content: fmt.Sprintf("%v", content),
-		styles:  styles,
+		name:     "Text",
+		content:  fmt.Sprint(content),
+		children: children,
 	}
 }
-
-func BindText[T any](fn func() T, styles ...loom.Node) loom.Node {
+func BindText[T any](fn func() T, styles ...*applyNode) loom.Node {
 	return Bind(func() loom.Node {
 		return Text(fn(), styles...)
 	})
 }
 
+func P(children ...loom.Node) loom.Node {
+	return &textNode{
+		name:     "P",
+		children: children,
+	}
+}
+func Paragraph(children ...loom.Node) loom.Node {
+	return P(children...)
+}
+
+func B(children ...loom.Node) loom.Node {
+	return &textNode{
+		name:     "B",
+		children: children,
+		modifier: func(parent core.Element, self core.TextElement) {
+			self.SetFontWeight("bold")
+		},
+	}
+}
+func Bold(children ...loom.Node) loom.Node {
+	return B(children...)
+}
+
+func I(children ...loom.Node) loom.Node {
+	return &textNode{
+		name:     "I",
+		children: children,
+		modifier: func(parent core.Element, self core.TextElement) {
+			self.SetFontStyle("italic")
+		},
+	}
+}
+func Italic(children ...loom.Node) loom.Node {
+	return I(children...)
+}
+
+func U(children ...loom.Node) loom.Node {
+	return &textNode{
+		name: "U",
+		modifier: func(parent core.Element, self core.TextElement) {
+			self.SetTextDecoration("underline")
+		},
+		children: children,
+	}
+}
+func Underline(children ...loom.Node) loom.Node {
+	return U(children...)
+}
+
+func S(children ...loom.Node) loom.Node {
+	return &textNode{
+		name: "S",
+		modifier: func(parent core.Element, self core.TextElement) {
+			self.SetTextDecoration("strikethrough")
+		},
+		children: children,
+	}
+}
+func Strikethrough(children ...loom.Node) loom.Node {
+	return S(children...)
+}
+
+func Br() loom.Node {
+	return &textNode{
+		name: "Br",
+		modifier: func(parent core.Element, self core.TextElement) {
+			_, ok := parent.(core.TextElement)
+			if ok {
+				self.SetText("\n")
+			}
+		},
+	}
+}
+
 type textNode struct {
-	content string
-	styles  []loom.Node
+	name     string
+	content  string
+	modifier func(parent core.Element, self core.TextElement)
+	children []loom.Node
 }
 
 func (n *textNode) ID() string {
-	return "term.Text"
+	return fmt.Sprintf("term.%s", n.name)
 }
 
 func (n *textNode) Mount(slot *loom.Slot) error {
 	ctx, err := app.GetContext()
 	if err != nil {
-		return fmt.Errorf("Text: %w", err)
+		return fmt.Errorf("P: %w", err)
 	}
 
 	ctx.PushRenderHold()
 	defer ctx.PopRenderHold()
 
 	parent := slot.Parent().(core.Element)
-	self, err := elements.NewTextElement()
+	self, err := core.NewTextElement()
 	if err != nil {
-		return err
+		return fmt.Errorf("P: %w", err)
 	}
 	slot.SetSelf(self)
 
+	if n.modifier != nil {
+		n.modifier(parent, self)
+	}
+
 	parent.AppendChild(self)
-	ctx.ScheduleRender()
+	ctx.RequestRender()
 
 	return n.Update(slot)
 }
@@ -57,24 +141,24 @@ func (n *textNode) Mount(slot *loom.Slot) error {
 func (n *textNode) Update(slot *loom.Slot) error {
 	ctx, err := app.GetContext()
 	if err != nil {
-		return fmt.Errorf("Text: %w", err)
+		return fmt.Errorf("P: %w", err)
 	}
 
 	ctx.PushRenderHold()
 	defer ctx.PopRenderHold()
 
-	self := slot.Self().(*elements.TextElement)
+	self := slot.Self().(core.TextElement)
+	if n.content != "" {
+		self.SetText(n.content)
+	}
 
-	self.SetText(n.content)
-	ctx.ScheduleRender()
-
-	return slot.RenderChildren(n.styles...)
+	return slot.RenderChildren(n.children...)
 }
 
 func (n *textNode) Unmount(slot *loom.Slot) error {
 	ctx, err := app.GetContext()
 	if err != nil {
-		return fmt.Errorf("Text: %w", err)
+		return fmt.Errorf("P: %w", err)
 	}
 
 	ctx.PushRenderHold()
@@ -83,7 +167,6 @@ func (n *textNode) Unmount(slot *loom.Slot) error {
 	self := slot.Self().(core.Element)
 
 	self.Destroy()
-	ctx.ScheduleRender()
-
+	ctx.RequestRender()
 	return nil
 }

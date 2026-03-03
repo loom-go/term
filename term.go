@@ -93,9 +93,6 @@ func (a *App) render(fn func() loom.Node) error {
 	// handle panics in the reactive system
 	a.owner.OnError(a.emitError)
 
-	// forward errors from the appctx
-	go forward(a.ctx, appctx.Errors(), a.errors)
-
 	return nil
 }
 

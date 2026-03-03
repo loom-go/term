@@ -45,8 +45,9 @@ var namedColors = map[string]opentui.RGBA{
 }
 
 type Color struct {
-	cached string
-	color  opentui.RGBA
+	cached  string
+	color   opentui.RGBA
+	opacity *float32
 }
 
 func NewColor(color string) *Color {
@@ -70,8 +71,35 @@ func (c *Color) Set(color string) error {
 	return nil
 }
 
+func (c *Color) Unset() {
+	c.cached = ""
+	c.color = opentui.Transparent
+}
+
+func (c *Color) SetOpacity(opacity float32) error {
+	opacity = min(max(opacity, 0), 1)
+	c.opacity = &opacity
+	return nil
+}
+
+func (c *Color) UnsetOpacity() error {
+	c.opacity = nil
+	return nil
+}
+
 func (c Color) RGBA() opentui.RGBA {
-	return c.color
+	rgba := opentui.RGBA{
+		R: c.color.R,
+		G: c.color.G,
+		B: c.color.B,
+		A: c.color.A,
+	}
+
+	if c.opacity != nil {
+		rgba.A *= *c.opacity
+	}
+
+	return rgba
 }
 
 func toOpenTUIColor(color string, fallback ...string) (rgba opentui.RGBA, err error) {

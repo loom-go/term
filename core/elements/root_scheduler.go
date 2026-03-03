@@ -26,11 +26,11 @@ type Scheduler struct {
 	mu  sync.RWMutex
 	ctx context.Context
 
-	task  chan *task // Internal coordination only
-	queue []*task    // The actual ordered queue
+	task  chan *task
+	queue []*task
 
 	rendering bool
-	pending   bool // Signal that queue has work
+	pending   bool
 }
 
 func NewScheduler(ctx context.Context) *Scheduler {
@@ -51,19 +51,12 @@ func (s *Scheduler) Schedule(typ taskType, fn func() error) <-chan error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.queue = append(s.queue, task)
-	if s.rendering && typ == taskUpdate {
+	s.enqueue(task)
+	if s.rendering && typ != taskRender {
 		return result
 	}
 
-	if !s.pending {
-		s.pending = true
-		select {
-		case s.task <- task: // wake up
-		default:
-		}
-	}
-
+	s.send(task)
 	return result
 }
 
@@ -90,15 +83,14 @@ func (s *Scheduler) processQueue() {
 		task := s.queue[0]
 		s.queue = s.queue[1:]
 
-		isRender := task.typ == taskRender
-		if isRender {
+		if task.typ == taskRender {
 			s.rendering = true
 		}
 		s.mu.Unlock()
 
 		s.run(task)
 
-		if isRender {
+		if task.typ == taskRender {
 			s.mu.Lock()
 			s.rendering = false
 			s.mu.Unlock()
@@ -107,10 +99,16 @@ func (s *Scheduler) processQueue() {
 }
 
 func (s *Scheduler) send(task *task) {
+	if s.pending {
+		return
+	}
+
+	s.pending = true
 	select {
-	case s.task <- task:
+	case s.task <- task: // wake up (grap a bush and put a little makeup)
 	case <-s.ctx.Done():
 		task.result <- nil
+	default:
 	}
 }
 

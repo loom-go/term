@@ -7,29 +7,24 @@ import (
 	"github.com/AnatoleLucet/loom/signals"
 )
 
-// Scheduler is responsible for scheduling renders when elements are updated without over or under rendering.
+// Scheduler is responsible for scheduling renders within the reactive system
+// when elements are updated without over or under rendering
 type Scheduler struct {
 	mu sync.RWMutex
 
 	ctx context.Context
 
-	// render   func() error
 	render func()
-
-	deffered []func() error
 
 	scheduled bool
 	clock     int
 	holdDepth int
-
-	errors chan error
 }
 
 func NewScheduler(ctx context.Context, render func()) *Scheduler {
 	return &Scheduler{
 		ctx:    ctx,
 		render: render,
-		errors: make(chan error, 1),
 	}
 }
 
@@ -37,10 +32,6 @@ func (s *Scheduler) Time() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.clock
-}
-
-func (s *Scheduler) Errors() <-chan error {
-	return s.errors
 }
 
 func (s *Scheduler) PushHold() {
@@ -56,16 +47,10 @@ func (s *Scheduler) PopHold() {
 	}
 	s.mu.Unlock()
 
-	s.Schedule()
+	s.ScheduleRender()
 }
 
-func (s *Scheduler) Defer(f func() error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.deffered = append(s.deffered, f)
-}
-
-func (s *Scheduler) Schedule() {
+func (s *Scheduler) ScheduleRender() {
 	s.mu.Lock()
 	if s.holdDepth > 0 || s.scheduled {
 		s.mu.Unlock()
@@ -89,44 +74,10 @@ func (s *Scheduler) Schedule() {
 }
 
 func (s *Scheduler) doRender() {
-	// for s.scheduled {
-	// 	select {
-	// 	case <-s.ctx.Done():
-	// 		return
-	// 	default:
-	// 	}
-
 	s.mu.Lock()
 	s.clock++
 	s.scheduled = false
 	s.mu.Unlock()
 
 	s.render()
-
-	// 	if s.scheduled {
-	// 		core.LogDebugf("Render scheduled during render, deferring next render")
-	// 	}
-	// }
-}
-
-func (s *Scheduler) drainDeferred() error {
-	s.mu.Lock()
-	deffered := s.deffered
-	s.deffered = nil
-	s.mu.Unlock()
-
-	for _, f := range deffered {
-		select {
-		case <-s.ctx.Done():
-			return nil
-		default:
-		}
-
-		err := f()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

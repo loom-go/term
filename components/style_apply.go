@@ -7,7 +7,7 @@ import (
 	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term/core"
 	"github.com/AnatoleLucet/loom-term/internal/app"
-	. "github.com/AnatoleLucet/loom/components"
+	"github.com/AnatoleLucet/loom/signals"
 )
 
 var nextID atomic.Uint32
@@ -17,88 +17,173 @@ func newID() uint32 {
 }
 
 type applyNode struct {
-	style Style
+	event  string
+	styles []Style
 }
 
-// Apply applies the given Style to a node.
-func Apply(style Style) *applyNode {
-	return &applyNode{style}
+// Apply applies the given Styles to a node.
+func Apply(styles ...Style) *applyNode {
+	return &applyNode{
+		styles: styles,
+	}
 }
 
-func BindApply(fn func() Style) loom.Node {
-	return Bind(func() loom.Node {
-		return Apply(fn())
-	})
-}
-
-// ApplyOn applies a Style to a specific event (e.g., "hover", "focus").
-func ApplyOn(event string, style Style) *applyNode {
-	// todo: impl
-	return &applyNode{style}
-}
-
-func BindApplyOn(event string, fn func() Style) *applyNode {
-	// todo: impl
-	return &applyNode{fn()}
+// ApplyOn applies the Styles on a specific event ("hover", "focus", "active").
+func ApplyOn(event string, styles ...Style) *applyNode {
+	return &applyNode{
+		event:  event,
+		styles: styles,
+	}
 }
 
 func (s *applyNode) ID() string {
-	return "term.Style"
+	return "term.Apply"
 }
 
 func (s *applyNode) Mount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
-	if err != nil {
-		return fmt.Errorf("Apply (style): %w", err)
-	}
-
 	id := newID()
-	slot.SetSelf(id)
+	layer := &styleLayer{
+		id:      id,
+		event:   s.event,
+		styles:  s.styles,
+		visible: s.event == "",
+	}
+	slot.SetSelf(layer)
 
-	parent := slot.Parent().(core.Element)
-
-	stack := getStyleStack(parent)
-	stack.Push(id, s.style)
-
-	applyStyle(parent, &s.style)
-	ctx.ScheduleRender()
-
-	return nil
+	return s.run(slot, true)
 }
 
 func (s *applyNode) Update(slot *loom.Slot) error {
+	return s.run(slot, false)
+}
+
+func (s *applyNode) Unmount(slot *loom.Slot) error {
+	self := slot.Self().(*styleLayer)
+	parent := slot.Parent().(core.Element)
 	ctx, err := app.GetContext()
 	if err != nil {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	self := slot.Self().(uint32)
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	// remove our layer from the stack
+	stack := getStyleStack(parent)
+	stack.Pop(self.id)
+
+	// unset our layer styles
+	self.visible = false
+	s.applyStyleLayer(parent, self)
+
+	// reapply the properties that we might have unset
+	s.applyStyleStack(slot)
+
+	ctx.RequestRender()
+	return nil
+}
+
+func (s *applyNode) applyStyleStack(slot *loom.Slot) {
+	self := slot.Self().(*styleLayer)
 	parent := slot.Parent().(core.Element)
 
 	stack := getStyleStack(parent)
-	stack.Replace(self, s.style)
+	for _, layer := range stack.layers {
+		if layer == self {
+			s.applyStyleLayer(parent, layer)
+		} else {
+			// untrack style layers that's not ours. each apply tracks its own layer
+			signals.Untrack(func() any {
+				s.applyStyleLayer(parent, layer)
+				return nil
+			})
+		}
+	}
+}
 
-	applyStyleStack(parent)
-	ctx.ScheduleRender()
+func (s *applyNode) applyStyleLayer(parent core.Element, layer *styleLayer) bool {
+	for _, style := range layer.styles {
+		if layer.visible {
+			applyStyle(parent, style)
+		} else {
+			removeStyle(parent, style)
+		}
+	}
+
+	return true
+}
+
+func (s *applyNode) run(slot *loom.Slot, initial bool) error {
+	ctx, err := app.GetContext()
+	if err != nil {
+		return fmt.Errorf("Apply (style): %w", err)
+	}
+
+	ctx.PushRenderHold()
+	defer ctx.PopRenderHold()
+
+	if s.event == "" {
+		s.watch(slot, initial, ctx.RequestRender)
+	} else {
+		s.registerEvents(slot, ctx, initial)
+	}
 
 	return nil
 }
 
-func (s *applyNode) Unmount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
-	if err != nil {
-		return fmt.Errorf("Apply (style): %w", err)
-	}
-
-	self := slot.Self().(uint32)
+func (s *applyNode) watch(slot *loom.Slot, initial bool, render func()) {
+	self := slot.Self().(*styleLayer)
 	parent := slot.Parent().(core.Element)
 
 	stack := getStyleStack(parent)
-	stack.Pop(self)
 
-	removeStyle(parent, &s.style)
-	applyStyleStack(parent)
-	ctx.ScheduleRender()
+	signals.RenderEffect(func() {
+		if initial {
+			// if we're in the initial phase, we can just apply our own layer
+			stack.Push(self)
+			s.applyStyleLayer(parent, self)
+		} else {
+			// else we must update our layer (re-prioritizing it) then reapply the whole stack
+			// to make sure removed properties in the new layer gets proper fallback
+			stack.Replace(self.id, s.styles)
+			s.applyStyleStack(slot)
+		}
 
-	return nil
+		render()
+	})
+}
+
+func (s *applyNode) registerEvents(slot *loom.Slot, ctx *app.AppContext, initial bool) {
+	// use a custom owner to dispose the RenderEffect in watch() when the event is removed.
+	owner := signals.NewOwner()
+
+	self := slot.Self().(*styleLayer)
+	parent := slot.Parent().(core.Element)
+
+	add := func() {
+		owner.Run(func() error {
+			self.visible = true
+			s.watch(slot, initial, ctx.ScheduleRender)
+			return nil
+		})
+	}
+	remove := func() {
+		self.visible = false
+		owner.Dispose()
+		s.applyStyleStack(slot)
+		ctx.ScheduleRender()
+	}
+
+	if s.event == "hover" {
+		signals.OnCleanup(parent.OnMouseEnter(func(*core.EventMouse) { add() }))
+		signals.OnCleanup(parent.OnMouseLeave(func(*core.EventMouse) { remove() }))
+	}
+	if s.event == "focus" {
+		signals.OnCleanup(parent.OnFocus(func(*core.EventFocus) { add() }))
+		signals.OnCleanup(parent.OnBlur(func(*core.EventBlur) { remove() }))
+	}
+	if s.event == "active" {
+		signals.OnCleanup(parent.OnMousePress(func(*core.EventMouse) { add() }))
+		signals.OnCleanup(parent.OnMouseRelease(func(*core.EventMouse) { remove() }))
+	}
 }

@@ -10,12 +10,13 @@ import (
 
 const consoleBG = "#111111dd"
 const consoleLogsHeaderBG = "#00000055"
+const consoleLogsScrollFactor = 2
 
 var consoleLogsLevelColors = map[debug.LogLevel]string{
-	debug.LogLevelDebug:   "#6B7280",
-	debug.LogLevelInfo:    "#3B82F6",
-	debug.LogLevelWarning: "#F59E0B",
-	debug.LogLevelError:   "#EF4444",
+	debug.LogLevelDebug:   "#6b7280",
+	debug.LogLevelInfo:    "#3b82f6",
+	debug.LogLevelWarning: "#f59e0b",
+	debug.LogLevelError:   "#ef4444",
 }
 
 type ConsoleElement struct {
@@ -48,7 +49,6 @@ func NewConsoleElement() (e *ConsoleElement, err error) {
 	}
 	base.self = e
 	e.SetZIndex(math.MaxInt)
-	e.SetMinHeight(height / 2)
 
 	stats, err := newStatsElement()
 	if err != nil {
