@@ -92,7 +92,7 @@ func (l *KeyboardListener) parseBracketedPaste(buf []byte) (*EventPaste, int) {
 	pastedText := string(buf[start:end])
 	consumed := end + len(pasteEnd)
 
-	return &EventPaste{Text: pastedText}, consumed
+	return &EventPaste{Value: pastedText}, consumed
 }
 
 func (l *KeyboardListener) parseKeyEvent(buf []byte) (event *EventKey, consumed int) {

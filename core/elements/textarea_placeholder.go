@@ -2,21 +2,21 @@ package elements
 
 import "github.com/AnatoleLucet/go-opentui"
 
-func (a *TextAreaElement) Placeholder() string {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+func (a *TextAreaElement) Placeholder() (text string) {
+	scheduleAccess(a.Self(), func() {
+		a.mu.RLock()
+		defer a.mu.RUnlock()
 
-	return a.placeholder.Text()
+		text = a.placeholder.Text()
+	})
+
+	return
 }
 
 func (a *TextAreaElement) SetPlaceholder(text string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetText(text)
 		a.updatePlaceholder()
@@ -29,13 +29,9 @@ func (a *TextAreaElement) UnsetPlaceholder() {
 }
 
 func (a *TextAreaElement) SetPlaceholderFontWeight(weight string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetFontWeight(weight)
 		a.updatePlaceholder()
@@ -45,13 +41,9 @@ func (a *TextAreaElement) SetPlaceholderFontWeight(weight string) {
 
 // normal | bold
 func (a *TextAreaElement) UnsetPlaceholderFontWeight() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.UnsetFontWeight()
 		a.updatePlaceholder()
@@ -61,13 +53,9 @@ func (a *TextAreaElement) UnsetPlaceholderFontWeight() {
 
 // normal | italic
 func (a *TextAreaElement) SetPlaceholderFontStyle(style string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetFontStyle(style)
 		a.updatePlaceholder()
@@ -76,13 +64,9 @@ func (a *TextAreaElement) SetPlaceholderFontStyle(style string) {
 }
 
 func (a *TextAreaElement) UnsetPlaceholderFontStyle() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.UnsetFontStyle()
 		a.updatePlaceholder()
@@ -92,13 +76,9 @@ func (a *TextAreaElement) UnsetPlaceholderFontStyle() {
 
 // none | underline | strikethrough
 func (a *TextAreaElement) SetPlaceholderDecoration(decoration string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetTextDecoration(decoration)
 		a.updatePlaceholder()
@@ -107,13 +87,9 @@ func (a *TextAreaElement) SetPlaceholderDecoration(decoration string) {
 }
 
 func (a *TextAreaElement) UnsetPlaceholderDecoration() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.UnsetTextDecoration()
 		a.updatePlaceholder()
@@ -122,13 +98,9 @@ func (a *TextAreaElement) UnsetPlaceholderDecoration() {
 }
 
 func (a *TextAreaElement) SetPlaceholderForeground(color string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetTextForeground(color)
 		a.updatePlaceholder()
@@ -137,13 +109,9 @@ func (a *TextAreaElement) SetPlaceholderForeground(color string) {
 }
 
 func (a *TextAreaElement) UnsetPlaceholderForeground() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.UnsetTextForeground()
 		a.updatePlaceholder()
@@ -152,13 +120,9 @@ func (a *TextAreaElement) UnsetPlaceholderForeground() {
 }
 
 func (a *TextAreaElement) SetPlaceholderBackground(color string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.SetTextBackground(color)
 		a.updatePlaceholder()
@@ -167,13 +131,9 @@ func (a *TextAreaElement) SetPlaceholderBackground(color string) {
 }
 
 func (a *TextAreaElement) UnsetPlaceholderBackground() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.placeholder.UnsetTextBackground()
 		a.updatePlaceholder()

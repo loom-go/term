@@ -34,6 +34,8 @@ type EventFocus = elements.EventFocus
 
 type EventBlur = elements.EventBlur
 
+type EventInput = elements.EventInput
+
 type EventSubmit = elements.EventSubmit
 
 type EventPaste = elements.EventPaste

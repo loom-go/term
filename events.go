@@ -33,6 +33,8 @@ type EventFocus = core.EventFocus
 
 type EventBlur = core.EventBlur
 
+type EventInput = core.EventInput
+
 type EventSubmit = core.EventSubmit
 
 type EventPaste = core.EventPaste

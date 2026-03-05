@@ -21,6 +21,8 @@ type TextAreaElement struct {
 
 	editBuffer     *opentui.EditBuffer
 	editBufferView *opentui.EditorView
+
+	input map[EventPhase]*eventBroadcaster[*EventInput]
 }
 
 func NewTextAreaElement() (area *TextAreaElement, err error) {
@@ -44,6 +46,8 @@ func NewTextAreaElement() (area *TextAreaElement, err error) {
 		backgroundColor: NewColor(""),
 
 		scrollFactor: 1,
+
+		input: newPhasedEventBroadcasters[*EventInput](),
 	}
 	box.self = area
 	area.editBuffer = opentui.NewEditBuffer(0)
@@ -84,49 +88,46 @@ func NewTextAreaElement() (area *TextAreaElement, err error) {
 	return area, nil
 }
 
-func (a *TextAreaElement) Text() string {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+func (a *TextAreaElement) Value() (text string) {
+	scheduleAccess(a.Self(), func() {
+		a.mu.RLock()
+		defer a.mu.RUnlock()
 
-	return a.editBuffer.GetText(0)
+		length := a.editBuffer.GetTextBuffer().GetLength()
+		text = a.editBuffer.GetText(int(length))
+	})
+
+	return
 }
 
-func (a *TextAreaElement) SetText(text string) {
-	a.scheduleUpdate(func() error {
+func (a *TextAreaElement) SetValue(text string) {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.SetText(text)
 		return nil
 	})
 }
 
-func (a *TextAreaElement) InsertText(text string) {
-	a.scheduleUpdate(func() error {
+func (a *TextAreaElement) InsertValue(text string) {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.InsertText(text)
 		return nil
 	})
 }
 
+func (a *TextAreaElement) Clear() {
+	a.SetValue("")
+}
+
 func (a *TextAreaElement) SetScrollFactor(factor float32) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.scrollFactor = factor
 		return nil
@@ -134,13 +135,9 @@ func (a *TextAreaElement) SetScrollFactor(factor float32) {
 }
 
 func (a *TextAreaElement) RemoveLeft() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.DeleteCharBackward()
 		return nil
@@ -148,13 +145,9 @@ func (a *TextAreaElement) RemoveLeft() {
 }
 
 func (a *TextAreaElement) RemoveRight() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.DeleteChar()
 		return nil
@@ -162,13 +155,9 @@ func (a *TextAreaElement) RemoveRight() {
 }
 
 func (a *TextAreaElement) RemoveWordLeft() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		prevWord := a.editBuffer.GetPrevWordBoundary()
@@ -181,13 +170,9 @@ func (a *TextAreaElement) RemoveWordLeft() {
 }
 
 func (a *TextAreaElement) RemoveWordRight() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		nextWord := a.editBuffer.GetNextWordBoundary()
@@ -200,13 +185,9 @@ func (a *TextAreaElement) RemoveWordRight() {
 }
 
 func (a *TextAreaElement) RemoveLine() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.DeleteLine()
 		return nil
@@ -214,13 +195,9 @@ func (a *TextAreaElement) RemoveLine() {
 }
 
 func (a *TextAreaElement) RemoveToLineStart() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		if cursor.Col > 0 {
@@ -232,13 +209,9 @@ func (a *TextAreaElement) RemoveToLineStart() {
 }
 
 func (a *TextAreaElement) RemoveToLineEnd() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		eol := a.editBuffer.GetEOL()
@@ -251,13 +224,9 @@ func (a *TextAreaElement) RemoveToLineEnd() {
 }
 
 func (a *TextAreaElement) MoveCursor(offset int) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.SetCursorByOffset(uint32(offset))
 		return nil
@@ -265,20 +234,20 @@ func (a *TextAreaElement) MoveCursor(offset int) {
 }
 
 func (a *TextAreaElement) GetCursor() (row, col uint32) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+	scheduleAccess(a.Self(), func() {
+		a.mu.RLock()
+		defer a.mu.RUnlock()
 
-	return a.editBuffer.GetCursor()
+		row, col = a.editBuffer.GetCursor()
+	})
+
+	return
 }
 
 func (a *TextAreaElement) SetCursor(row, col uint32) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.SetCursor(row, col)
 		return nil
@@ -286,13 +255,9 @@ func (a *TextAreaElement) SetCursor(row, col uint32) {
 }
 
 func (a *TextAreaElement) MoveCursorUp() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.MoveCursorUp()
 		return nil
@@ -300,13 +265,9 @@ func (a *TextAreaElement) MoveCursorUp() {
 }
 
 func (a *TextAreaElement) MoveCursorDown() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.MoveCursorDown()
 		return nil
@@ -314,13 +275,9 @@ func (a *TextAreaElement) MoveCursorDown() {
 }
 
 func (a *TextAreaElement) MoveCursorLeft() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.MoveCursorLeft()
 		return nil
@@ -328,13 +285,9 @@ func (a *TextAreaElement) MoveCursorLeft() {
 }
 
 func (a *TextAreaElement) MoveCursorRight() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.editBuffer.MoveCursorRight()
 		return nil
@@ -342,13 +295,9 @@ func (a *TextAreaElement) MoveCursorRight() {
 }
 
 func (a *TextAreaElement) MoveCursorWordLeft() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		prevWord := a.editBuffer.GetPrevWordBoundary()
@@ -361,13 +310,9 @@ func (a *TextAreaElement) MoveCursorWordLeft() {
 }
 
 func (a *TextAreaElement) MoveCursorWordRight() {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		cursor := a.editBuffer.GetCursorPosition()
 		nextWord := a.editBuffer.GetNextWordBoundary()
@@ -381,13 +326,9 @@ func (a *TextAreaElement) MoveCursorWordRight() {
 
 // none | word | all
 func (a *TextAreaElement) SetWrap(mode string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		wrapMode, ok := wrapModes[mode]
 		if !ok {
@@ -406,13 +347,9 @@ func (a *TextAreaElement) UnsetWrap() {
 }
 
 func (a *TextAreaElement) SetTextForeground(color string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.foregroundColor.Set(color)
 		rgba := a.foregroundColor.RGBA()
@@ -426,13 +363,9 @@ func (a *TextAreaElement) UnsetTextForeground() {
 }
 
 func (a *TextAreaElement) SetTextBackground(color string) {
-	a.scheduleUpdate(func() error {
+	scheduleUpdate(a.Self(), func() error {
 		a.mu.Lock()
 		defer a.mu.Unlock()
-
-		if err := guardDestroyed(a.ctx); err != nil {
-			return err
-		}
 
 		a.backgroundColor.Set(color)
 		rgba := a.backgroundColor.RGBA()
@@ -443,21 +376,6 @@ func (a *TextAreaElement) SetTextBackground(color string) {
 
 func (a *TextAreaElement) UnsetTextBackground() {
 	a.SetTextBackground("")
-}
-
-func (a *TextAreaElement) Submit() error {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	if err := guardDestroyed(a.ctx); err != nil {
-		return err
-	}
-
-	evt := &EventSubmit{Text: a.Text()}
-	evt.setTarget(a.Self())
-
-	a.rdrctx.DispatchEvent(EventTypeSubmit, a, evt)
-	return nil
 }
 
 func (a *TextAreaElement) Render(buffer *opentui.Buffer, rect gfx.Rect) error {

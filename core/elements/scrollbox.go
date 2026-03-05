@@ -23,15 +23,16 @@ type ScrollBoxElement struct {
 	container *BaseElement
 	content   *BaseElement
 
-	factor float32
+	factorX float32
+	factorY float32
 
 	scrollY float32
 	scrollX float32
 
 	// we cannot scroll directly when calling a ScrollToX method,
 	// because the layout might not be up to date yet.
-	// so we store the action, and run it during the record phase.
-	pendingAction *scrollAction
+	// so we store the action, and run it during the record phase (after the layout has been computed)
+	pendingActions []scrollAction
 }
 
 func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
@@ -69,7 +70,8 @@ func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
 		BoxElement: box,
 		container:  container,
 		content:    content,
-		factor:     1,
+		factorX:    2,
+		factorY:    1,
 	}
 	box.self = scrollb
 
@@ -78,18 +80,20 @@ func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
 		oldScrollY := scrollb.scrollY
 		oldScrollX := scrollb.scrollX
 
-		delta := 1 * scrollb.factor
-
 		if event.Button == events.MouseWheelUp {
+			delta := 1 * scrollb.factorY
 			scrollb.scrollX, scrollb.scrollY = scrollb.clamp(scrollb.scrollX, scrollb.scrollY-delta)
 		}
 		if event.Button == events.MouseWheelDown {
+			delta := 1 * scrollb.factorY
 			scrollb.scrollX, scrollb.scrollY = scrollb.clamp(scrollb.scrollX, scrollb.scrollY+delta)
 		}
 		if event.Button == events.MouseWheelLeft {
+			delta := 1 * scrollb.factorX
 			scrollb.scrollX, scrollb.scrollY = scrollb.clamp(scrollb.scrollX-delta, scrollb.scrollY)
 		}
 		if event.Button == events.MouseWheelRight {
+			delta := 1 * scrollb.factorX
 			scrollb.scrollX, scrollb.scrollY = scrollb.clamp(scrollb.scrollX+delta, scrollb.scrollY)
 		}
 
@@ -98,7 +102,7 @@ func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
 		scrollb.mu.Unlock()
 
 		if oldScrollY != newScrollY || oldScrollX != newScrollX {
-			scrollb.rdrctx.ScheduleRender()
+			scheduleUpdate(scrollb.Self(), func() error { return nil }) // schedule a nil update to trigger a render
 		}
 	})
 	scrollb.OnDestroy(remove)
@@ -118,68 +122,96 @@ func (e *ScrollBoxElement) RemoveChild(child Element) {
 	e.content.RemoveChild(child)
 }
 
-func (e *ScrollBoxElement) SetScrollFactor(factor float32) {
-	e.scheduleUpdate(func() error {
+func (e *ScrollBoxElement) SetScrollFactorX(factor float32) {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
 
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
-
-		e.factor = factor
+		e.factorX = factor
 		return nil
 	})
 }
 
-func (e *ScrollBoxElement) ScrollY() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.scrollY
+func (e *ScrollBoxElement) SetScrollFactorY(factor float32) {
+	scheduleUpdate(e.Self(), func() error {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+
+		e.factorY = factor
+		return nil
+	})
 }
 
-func (e *ScrollBoxElement) ScrollX() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.scrollX
-}
-
-func (e *ScrollBoxElement) ViewportHeight() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	_, h := e.viewportSize()
-	return h
-}
-
-func (e *ScrollBoxElement) ViewportWidth() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	w, _ := e.viewportSize()
-	return w
-}
-
-func (e *ScrollBoxElement) ContentHeight() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	_, h := e.contentSize()
-	return h
-}
-
-func (e *ScrollBoxElement) ContentWidth() float32 {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	w, _ := e.contentSize()
-	return w
-}
-
-func (e *ScrollBoxElement) ScrollTo(x, y float32) {
-	e.scheduleUpdate(func() error {
+func (e *ScrollBoxElement) ScrollY() (scrollY float32) {
+	scheduleAccess(e.Self(), func() {
 		e.mu.RLock()
 		defer e.mu.RUnlock()
 
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
+		scrollY = e.scrollY
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ScrollX() (scrollX float32) {
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
+
+		scrollX = e.scrollX
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ViewportHeight() (height float32) {
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
+
+		_, height = e.viewportSize()
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ViewportWidth() (width float32) {
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
+
+		width, _ = e.viewportSize()
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ContentHeight() (height float32) {
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
+
+		_, height = e.contentSize()
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ContentWidth() (width float32) {
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
+
+		width, _ = e.contentSize()
+	})
+
+	return
+}
+
+func (e *ScrollBoxElement) ScrollTo(x, y float32) {
+	scheduleUpdate(e.Self(), func() error {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
 
 		e.scrollX, e.scrollY = e.clamp(x, y)
 		return nil
@@ -187,13 +219,9 @@ func (e *ScrollBoxElement) ScrollTo(x, y float32) {
 }
 
 func (e *ScrollBoxElement) ScrollBy(dx, dy float32) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.RLock()
 		defer e.mu.RUnlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.scrollX, e.scrollY = e.clamp(e.scrollX+dx, e.scrollY+dy)
 		return nil
@@ -201,10 +229,9 @@ func (e *ScrollBoxElement) ScrollBy(dx, dy float32) {
 }
 
 func (e *ScrollBoxElement) ScrollToTop() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
-		action := scrollActionTop
-		e.pendingAction = &action
+		e.pendingActions = append(e.pendingActions, scrollActionTop)
 		e.mu.Unlock()
 
 		return nil
@@ -216,10 +243,9 @@ func (e *ScrollBoxElement) scrollToTop() {
 }
 
 func (e *ScrollBoxElement) ScrollToBottom() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
-		action := scrollActionBottom
-		e.pendingAction = &action
+		e.pendingActions = append(e.pendingActions, scrollActionBottom)
 		e.mu.Unlock()
 
 		return nil
@@ -233,10 +259,9 @@ func (e *ScrollBoxElement) scrollToBottom() {
 }
 
 func (e *ScrollBoxElement) ScrollToLeft() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
-		action := scrollActionLeft
-		e.pendingAction = &action
+		e.pendingActions = append(e.pendingActions, scrollActionLeft)
 		e.mu.Unlock()
 
 		return nil
@@ -249,10 +274,9 @@ func (e *ScrollBoxElement) scrollToLeft() error {
 }
 
 func (e *ScrollBoxElement) ScrollToRight() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
-		action := scrollActionRight
-		e.pendingAction = &action
+		e.pendingActions = append(e.pendingActions, scrollActionRight)
 		e.mu.Unlock()
 
 		return nil
@@ -267,23 +291,25 @@ func (e *ScrollBoxElement) scrollToRight() error {
 }
 
 func (e *ScrollBoxElement) IsAtScrollEdge() (atTop, atBottom, atLeft, atRight bool) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	scheduleAccess(e.Self(), func() {
+		e.mu.RLock()
+		defer e.mu.RUnlock()
 
-	viewportW, viewportH := e.viewportSize()
-	contentW, contentH := e.contentSize()
+		viewportW, viewportH := e.viewportSize()
+		contentW, contentH := e.contentSize()
 
-	atTop = e.scrollY <= 0
-	atBottom = e.scrollY >= contentH-viewportH
-	atLeft = e.scrollX <= 0
-	atRight = e.scrollX >= contentW-viewportW
+		atTop = e.scrollY <= 0
+		atBottom = e.scrollY >= contentH-viewportH
+		atLeft = e.scrollX <= 0
+		atRight = e.scrollX >= contentW-viewportW
+	})
 
 	return
 }
 
 func (b *ScrollBoxElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) error {
-	if b.pendingAction != nil {
-		switch *b.pendingAction {
+	for _, action := range b.pendingActions {
+		switch action {
 		case scrollActionTop:
 			b.scrollToTop()
 		case scrollActionBottom:
@@ -293,8 +319,8 @@ func (b *ScrollBoxElement) Record(cb *gfx.CommandBuffer, container gfx.Rect) err
 		case scrollActionRight:
 			b.scrollToRight()
 		}
-		b.pendingAction = nil
 	}
+	b.pendingActions = nil
 
 	// clamp again in case the element was resized since the last scroll action
 	x, y := b.clamp(b.scrollX, b.scrollY)
@@ -327,14 +353,10 @@ func (e *ScrollBoxElement) contentSize() (width, height float32) {
 }
 
 func (e *ScrollBoxElement) SetOverflow(overflow string) {
-	e.scheduleUpdate(func() error {
-		return guardDestroyed(e.ctx)
-	})
+	scheduleUpdate(e.Self(), func() error { return nil })
 }
 func (e *ScrollBoxElement) UnsetOverflow() {
-	e.scheduleUpdate(func() error {
-		return guardDestroyed(e.ctx)
-	})
+	scheduleUpdate(e.Self(), func() error { return nil })
 }
 
 func (e *ScrollBoxElement) SetPaddingAll(padding any) {

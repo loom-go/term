@@ -8,30 +8,30 @@ import (
 	"github.com/AnatoleLucet/loom-term/core"
 )
 
-func Box(children ...loom.Node) loom.Node {
-	return &boxNode{
+func ScrollBox(children ...loom.Node) loom.Node {
+	return &scrollBoxNode{
 		children: children,
 	}
 }
 
-type boxNode struct {
+type scrollBoxNode struct {
 	children []loom.Node
 }
 
-func (n *boxNode) ID() string {
-	return "term.Box"
+func (n *scrollBoxNode) ID() string {
+	return "term.ScrollBox"
 }
 
-func (n *boxNode) Mount(slot *loom.Slot) error {
+func (n *scrollBoxNode) Mount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("ScrollBox: %w", err)
 	}
 
 	parent := slot.Parent().(core.Element)
-	self, err := core.NewBoxElement()
+	self, err := core.NewScrollBoxElement()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("ScrollBox: %w", err)
 	}
 	slot.SetSelf(self)
 
@@ -41,10 +41,10 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Update(slot *loom.Slot) error {
+func (n *scrollBoxNode) Update(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("ScrollBox: %w", err)
 	}
 
 	return ctx.BatchRender(func() error {
@@ -52,10 +52,10 @@ func (n *boxNode) Update(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Unmount(slot *loom.Slot) error {
+func (n *scrollBoxNode) Unmount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("ScrollBox: %w", err)
 	}
 
 	self := slot.Self().(core.Element)

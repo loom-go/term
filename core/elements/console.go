@@ -5,12 +5,11 @@ import (
 	"math"
 
 	"github.com/AnatoleLucet/loom-term/core/debug"
-	"github.com/AnatoleLucet/loom-term/core/term"
 )
 
 const consoleBG = "#111111dd"
 const consoleLogsHeaderBG = "#00000055"
-const consoleLogsScrollFactor = 2
+const consoleLogsScrollFactorY = 2
 
 var consoleLogsLevelColors = map[debug.LogLevel]string{
 	debug.LogLevelDebug:   "#6b7280",
@@ -29,15 +28,6 @@ func NewConsoleElement() (e *ConsoleElement, err error) {
 			err = fmt.Errorf("Console: %w: %v", ErrFailedToInitializeElement, err)
 		}
 	}()
-
-	_, height, err := term.Size()
-	if err != nil {
-		return nil, err
-	}
-
-	if height < 20 {
-		return nil, fmt.Errorf("not enough vertical space to render console (height: %d)", height)
-	}
 
 	base, err := NewBaseElement()
 	if err != nil {

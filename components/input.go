@@ -4,34 +4,34 @@ import (
 	"fmt"
 
 	"github.com/AnatoleLucet/loom"
-	appctx "github.com/AnatoleLucet/loom-term/components/context"
+	"github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
 )
 
-func Box(children ...loom.Node) loom.Node {
-	return &boxNode{
+func Input(children ...loom.Node) loom.Node {
+	return &inputNode{
 		children: children,
 	}
 }
 
-type boxNode struct {
+type inputNode struct {
 	children []loom.Node
 }
 
-func (n *boxNode) ID() string {
-	return "term.Box"
+func (n *inputNode) ID() string {
+	return "term.Input"
 }
 
-func (n *boxNode) Mount(slot *loom.Slot) error {
+func (n *inputNode) Mount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("Input: %w", err)
 	}
 
 	parent := slot.Parent().(core.Element)
-	self, err := core.NewBoxElement()
+	self, err := core.NewInputElement()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("Input: %w", err)
 	}
 	slot.SetSelf(self)
 
@@ -41,10 +41,10 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Update(slot *loom.Slot) error {
+func (n *inputNode) Update(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("Input: %w", err)
 	}
 
 	return ctx.BatchRender(func() error {
@@ -52,10 +52,10 @@ func (n *boxNode) Update(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Unmount(slot *loom.Slot) error {
+func (n *inputNode) Unmount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("Input: %w", err)
 	}
 
 	self := slot.Self().(core.Element)

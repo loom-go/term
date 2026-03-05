@@ -45,11 +45,14 @@ func (b *BaseElementStyle) free() {
 	b.node = nil
 }
 
-func (b *BaseElement) ZIndex() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+func (b *BaseElement) ZIndex() (zindex int) {
+	scheduleAccess(b.Self(), func() {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+		zindex = b.zindexUnsafe()
+	})
 
-	return b.zindexUnsafe()
+	return
 }
 
 func (b *BaseElement) zindexUnsafe() int {
@@ -57,30 +60,24 @@ func (b *BaseElement) zindexUnsafe() int {
 }
 
 func (b *BaseElement) SetZIndex(zIndex int) {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
 		defer b.mu.Unlock()
 
-		if err := guardDestroyed(b.ctx); err != nil {
-			return err
-		}
-
 		if b.parent != nil {
-			if err := b.parent.updateZIndexUnsafe(b.Self(), b.zindex, zIndex); err != nil {
+			if err := b.parent.updateZIndex(b.Self(), b.zindex, zIndex); err != nil {
 				return fmt.Errorf("%w: %w", ErrFailedToUpdateZIndex, err)
 			}
 		}
 
 		b.zindex = zIndex
-
 		return nil
 	})
 }
 
-func (b *BaseElement) updateZIndexUnsafe(child Element, oldz, newz int) error {
-	if err := guardDestroyed(b.ctx); err != nil {
-		return err
-	}
+func (b *BaseElement) updateZIndex(child Element, oldz, newz int) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	// remove from old z-index
 	children := b.children[oldz]
@@ -97,13 +94,9 @@ func (b *BaseElement) updateZIndexUnsafe(child Element, oldz, newz int) error {
 }
 
 func (e *BaseElementStyle) SetWidth(width any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(width)
 		if err != nil {
@@ -120,13 +113,9 @@ func (e *BaseElementStyle) SetWidth(width any) {
 }
 
 func (e *BaseElementStyle) SetMinWidth(minWidth any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(minWidth)
 		if err != nil {
@@ -143,13 +132,9 @@ func (e *BaseElementStyle) SetMinWidth(minWidth any) {
 }
 
 func (e *BaseElementStyle) SetMaxWidth(maxWidth any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(maxWidth)
 		if err != nil {
@@ -166,13 +151,9 @@ func (e *BaseElementStyle) SetMaxWidth(maxWidth any) {
 }
 
 func (e *BaseElementStyle) SetHeight(height any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(height)
 		if err != nil {
@@ -189,13 +170,9 @@ func (e *BaseElementStyle) SetHeight(height any) {
 }
 
 func (e *BaseElementStyle) SetMinHeight(minHeight any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(minHeight)
 		if err != nil {
@@ -212,13 +189,9 @@ func (e *BaseElementStyle) SetMinHeight(minHeight any) {
 }
 
 func (e *BaseElementStyle) SetMaxHeight(maxHeight any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(maxHeight)
 		if err != nil {
@@ -235,13 +208,9 @@ func (e *BaseElementStyle) SetMaxHeight(maxHeight any) {
 }
 
 func (e *BaseElementStyle) SetTranslate(x, y float32) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.setTranslateUnsafe(x, y)
 	})
@@ -254,13 +223,9 @@ func (e *BaseElementStyle) setTranslateUnsafe(x, y float32) error {
 }
 
 func (e *BaseElementStyle) SetTop(top any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(top)
 		if err != nil {
@@ -277,13 +242,9 @@ func (e *BaseElementStyle) SetTop(top any) {
 }
 
 func (e *BaseElementStyle) SetBottom(bottom any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(bottom)
 		if err != nil {
@@ -300,13 +261,9 @@ func (e *BaseElementStyle) SetBottom(bottom any) {
 }
 
 func (e *BaseElementStyle) SetLeft(left any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(left)
 		if err != nil {
@@ -323,13 +280,9 @@ func (e *BaseElementStyle) SetLeft(left any) {
 }
 
 func (e *BaseElementStyle) SetRight(right any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(right)
 		if err != nil {
@@ -346,13 +299,9 @@ func (e *BaseElementStyle) SetRight(right any) {
 }
 
 func (e *BaseElementStyle) SetPosition(position string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch position {
 		case "static":
@@ -376,13 +325,9 @@ func (e *BaseElementStyle) SetPosition(position string) {
 }
 
 func (e *BaseElementStyle) SetPaddingAll(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -399,13 +344,9 @@ func (e *BaseElementStyle) SetPaddingAll(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingVertical(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -422,13 +363,9 @@ func (e *BaseElementStyle) SetPaddingVertical(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingHorizontal(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -445,13 +382,9 @@ func (e *BaseElementStyle) SetPaddingHorizontal(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingTop(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -468,13 +401,9 @@ func (e *BaseElementStyle) SetPaddingTop(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingBottom(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -491,13 +420,9 @@ func (e *BaseElementStyle) SetPaddingBottom(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingLeft(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -514,13 +439,9 @@ func (e *BaseElementStyle) SetPaddingLeft(padding any) {
 }
 
 func (e *BaseElementStyle) SetPaddingRight(padding any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(padding)
 		if err != nil {
@@ -537,13 +458,9 @@ func (e *BaseElementStyle) SetPaddingRight(padding any) {
 }
 
 func (e *BaseElementStyle) SetMarginAll(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -560,13 +477,9 @@ func (e *BaseElementStyle) SetMarginAll(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginVertical(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -583,13 +496,9 @@ func (e *BaseElementStyle) SetMarginVertical(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginHorizontal(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -606,13 +515,9 @@ func (e *BaseElementStyle) SetMarginHorizontal(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginTop(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -629,13 +534,9 @@ func (e *BaseElementStyle) SetMarginTop(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginBottom(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -652,13 +553,9 @@ func (e *BaseElementStyle) SetMarginBottom(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginLeft(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -675,13 +572,9 @@ func (e *BaseElementStyle) SetMarginLeft(margin any) {
 }
 
 func (e *BaseElementStyle) SetMarginRight(margin any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(margin)
 		if err != nil {
@@ -698,13 +591,9 @@ func (e *BaseElementStyle) SetMarginRight(margin any) {
 }
 
 func (e *BaseElementStyle) SetDisplay(display string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch display {
 		case "none":
@@ -728,13 +617,9 @@ func (e *BaseElementStyle) SetDisplay(display string) {
 }
 
 func (e *BaseElementStyle) SetAlignSelf(alignSelf string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch alignSelf {
 		case "auto":
@@ -770,13 +655,9 @@ func (e *BaseElementStyle) SetAlignSelf(alignSelf string) {
 }
 
 func (e *BaseElementStyle) SetAlignItems(alignItems string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch alignItems {
 		case "start":
@@ -808,13 +689,9 @@ func (e *BaseElementStyle) SetAlignItems(alignItems string) {
 }
 
 func (e *BaseElementStyle) SetAlignContent(alignContent string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch alignContent {
 		case "start":
@@ -847,13 +724,9 @@ func (e *BaseElementStyle) SetAlignContent(alignContent string) {
 }
 
 func (e *BaseElementStyle) SetJustifyContent(justifyContent string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch justifyContent {
 		case "start":
@@ -889,13 +762,9 @@ func (e *BaseElementStyle) SetJustifyContent(justifyContent string) {
 }
 
 func (e *BaseElementStyle) SetFlexDirection(flexDirection string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch flexDirection {
 		case "row":
@@ -923,13 +792,9 @@ func (e *BaseElementStyle) SetFlexDirection(flexDirection string) {
 }
 
 func (e *BaseElementStyle) SetFlexWrap(flexWrap string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch flexWrap {
 		case "nowrap":
@@ -953,13 +818,9 @@ func (e *BaseElementStyle) SetFlexWrap(flexWrap string) {
 }
 
 func (e *BaseElementStyle) SetFlexGrow(flexGrow string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		if flexGrow == "none" {
 			return nil
@@ -980,13 +841,9 @@ func (e *BaseElementStyle) SetFlexGrow(flexGrow string) {
 }
 
 func (e *BaseElementStyle) SetFlexShrink(flexShrink string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		if flexShrink == "none" {
 			return nil
@@ -1007,13 +864,9 @@ func (e *BaseElementStyle) SetFlexShrink(flexShrink string) {
 }
 
 func (e *BaseElementStyle) SetGapAll(gap any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(gap)
 		if err != nil {
@@ -1030,13 +883,9 @@ func (e *BaseElementStyle) SetGapAll(gap any) {
 }
 
 func (e *BaseElementStyle) SetGapRow(gap any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(gap)
 		if err != nil {
@@ -1053,13 +902,9 @@ func (e *BaseElementStyle) SetGapRow(gap any) {
 }
 
 func (e *BaseElementStyle) SetGapColumn(gap any) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		value, err := toTessValue(gap)
 		if err != nil {
@@ -1076,13 +921,9 @@ func (e *BaseElementStyle) SetGapColumn(gap any) {
 }
 
 func (e *BaseElementStyle) SetOverflow(overflow string) {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		switch overflow {
 		case "visible":
@@ -1106,13 +947,9 @@ func (b *BaseElement) UnsetZIndex() {
 }
 
 func (e *BaseElementStyle) UnsetWidth() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetWidth(tess.Undefined())
 		if err != nil {
@@ -1124,13 +961,9 @@ func (e *BaseElementStyle) UnsetWidth() {
 }
 
 func (e *BaseElementStyle) UnsetMinWidth() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMinWidth(tess.Undefined())
 		if err != nil {
@@ -1142,13 +975,9 @@ func (e *BaseElementStyle) UnsetMinWidth() {
 }
 
 func (e *BaseElementStyle) UnsetMaxWidth() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMaxWidth(tess.Undefined())
 		if err != nil {
@@ -1160,13 +989,9 @@ func (e *BaseElementStyle) UnsetMaxWidth() {
 }
 
 func (e *BaseElementStyle) UnsetHeight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetHeight(tess.Undefined())
 		if err != nil {
@@ -1178,13 +1003,9 @@ func (e *BaseElementStyle) UnsetHeight() {
 }
 
 func (e *BaseElementStyle) UnsetMinHeight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMinHeight(tess.Undefined())
 		if err != nil {
@@ -1196,13 +1017,9 @@ func (e *BaseElementStyle) UnsetMinHeight() {
 }
 
 func (e *BaseElementStyle) UnsetMaxHeight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMaxHeight(tess.Undefined())
 		if err != nil {
@@ -1214,13 +1031,9 @@ func (e *BaseElementStyle) UnsetMaxHeight() {
 }
 
 func (e *BaseElementStyle) UnsetTranslate() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.translateX = 0
 		e.translateY = 0
@@ -1229,13 +1042,9 @@ func (e *BaseElementStyle) UnsetTranslate() {
 }
 
 func (e *BaseElementStyle) UnsetTop() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetTop(tess.Undefined())
 		if err != nil {
@@ -1247,13 +1056,9 @@ func (e *BaseElementStyle) UnsetTop() {
 }
 
 func (e *BaseElementStyle) UnsetBottom() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetBottom(tess.Undefined())
 		if err != nil {
@@ -1265,13 +1070,9 @@ func (e *BaseElementStyle) UnsetBottom() {
 }
 
 func (e *BaseElementStyle) UnsetLeft() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetLeft(tess.Undefined())
 		if err != nil {
@@ -1283,13 +1084,9 @@ func (e *BaseElementStyle) UnsetLeft() {
 }
 
 func (e *BaseElementStyle) UnsetRight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetRight(tess.Undefined())
 		if err != nil {
@@ -1301,13 +1098,9 @@ func (e *BaseElementStyle) UnsetRight() {
 }
 
 func (e *BaseElementStyle) UnsetPosition() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPosition(tess.Static)
 		if err != nil {
@@ -1319,13 +1112,9 @@ func (e *BaseElementStyle) UnsetPosition() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingAll() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{All: tess.Undefined()})
 		if err != nil {
@@ -1337,13 +1126,9 @@ func (e *BaseElementStyle) UnsetPaddingAll() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingVertical() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Vertical: tess.Undefined()})
 		if err != nil {
@@ -1355,13 +1140,9 @@ func (e *BaseElementStyle) UnsetPaddingVertical() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingHorizontal() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Horizontal: tess.Undefined()})
 		if err != nil {
@@ -1373,13 +1154,9 @@ func (e *BaseElementStyle) UnsetPaddingHorizontal() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingTop() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Top: tess.Undefined()})
 		if err != nil {
@@ -1391,13 +1168,9 @@ func (e *BaseElementStyle) UnsetPaddingTop() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingBottom() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Bottom: tess.Undefined()})
 		if err != nil {
@@ -1409,13 +1182,9 @@ func (e *BaseElementStyle) UnsetPaddingBottom() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingLeft() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Left: tess.Undefined()})
 		if err != nil {
@@ -1427,13 +1196,9 @@ func (e *BaseElementStyle) UnsetPaddingLeft() {
 }
 
 func (e *BaseElementStyle) UnsetPaddingRight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetPadding(tess.Edges{Right: tess.Undefined()})
 		if err != nil {
@@ -1445,13 +1210,9 @@ func (e *BaseElementStyle) UnsetPaddingRight() {
 }
 
 func (e *BaseElementStyle) UnsetMarginAll() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{All: tess.Undefined()})
 		if err != nil {
@@ -1463,13 +1224,9 @@ func (e *BaseElementStyle) UnsetMarginAll() {
 }
 
 func (e *BaseElementStyle) UnsetMarginVertical() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Vertical: tess.Undefined()})
 		if err != nil {
@@ -1481,13 +1238,9 @@ func (e *BaseElementStyle) UnsetMarginVertical() {
 }
 
 func (e *BaseElementStyle) UnsetMarginHorizontal() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Horizontal: tess.Undefined()})
 		if err != nil {
@@ -1499,13 +1252,9 @@ func (e *BaseElementStyle) UnsetMarginHorizontal() {
 }
 
 func (e *BaseElementStyle) UnsetMarginTop() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Top: tess.Undefined()})
 		if err != nil {
@@ -1517,13 +1266,9 @@ func (e *BaseElementStyle) UnsetMarginTop() {
 }
 
 func (e *BaseElementStyle) UnsetMarginBottom() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Bottom: tess.Undefined()})
 		if err != nil {
@@ -1535,13 +1280,9 @@ func (e *BaseElementStyle) UnsetMarginBottom() {
 }
 
 func (e *BaseElementStyle) UnsetMarginLeft() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Left: tess.Undefined()})
 		if err != nil {
@@ -1553,13 +1294,9 @@ func (e *BaseElementStyle) UnsetMarginLeft() {
 }
 
 func (e *BaseElementStyle) UnsetMarginRight() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetMargin(tess.Edges{Right: tess.Undefined()})
 		if err != nil {
@@ -1571,13 +1308,9 @@ func (e *BaseElementStyle) UnsetMarginRight() {
 }
 
 func (e *BaseElementStyle) UnsetDisplay() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetDisplay(tess.Flex)
 		if err != nil {
@@ -1589,13 +1322,9 @@ func (e *BaseElementStyle) UnsetDisplay() {
 }
 
 func (e *BaseElementStyle) UnsetAlignSelf() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetAlignSelf(tess.AlignAuto)
 		if err != nil {
@@ -1607,13 +1336,9 @@ func (e *BaseElementStyle) UnsetAlignSelf() {
 }
 
 func (e *BaseElementStyle) UnsetAlignItems() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetAlignItems(tess.AlignStretch)
 		if err != nil {
@@ -1625,13 +1350,9 @@ func (e *BaseElementStyle) UnsetAlignItems() {
 }
 
 func (e *BaseElementStyle) UnsetAlignContent() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetAlignContent(tess.AlignStretch)
 		if err != nil {
@@ -1643,13 +1364,9 @@ func (e *BaseElementStyle) UnsetAlignContent() {
 }
 
 func (e *BaseElementStyle) UnsetJustifyContent() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetJustifyContent(tess.JustifyStart)
 		if err != nil {
@@ -1661,13 +1378,9 @@ func (e *BaseElementStyle) UnsetJustifyContent() {
 }
 
 func (e *BaseElementStyle) UnsetFlexDirection() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetFlexDirection(tess.Column)
 		if err != nil {
@@ -1679,13 +1392,9 @@ func (e *BaseElementStyle) UnsetFlexDirection() {
 }
 
 func (e *BaseElementStyle) UnsetFlexWrap() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetFlexWrap(tess.NoWrap)
 		if err != nil {
@@ -1697,13 +1406,9 @@ func (e *BaseElementStyle) UnsetFlexWrap() {
 }
 
 func (e *BaseElementStyle) UnsetFlexGrow() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetFlexGrow(0)
 		if err != nil {
@@ -1715,13 +1420,9 @@ func (e *BaseElementStyle) UnsetFlexGrow() {
 }
 
 func (e *BaseElementStyle) UnsetFlexShrink() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetFlexShrink(1)
 		if err != nil {
@@ -1733,13 +1434,9 @@ func (e *BaseElementStyle) UnsetFlexShrink() {
 }
 
 func (e *BaseElementStyle) UnsetGapAll() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetGap(tess.Gap{All: tess.Undefined()})
 		if err != nil {
@@ -1751,13 +1448,9 @@ func (e *BaseElementStyle) UnsetGapAll() {
 }
 
 func (e *BaseElementStyle) UnsetGapRow() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetGap(tess.Gap{Row: tess.Undefined()})
 		if err != nil {
@@ -1769,13 +1462,9 @@ func (e *BaseElementStyle) UnsetGapRow() {
 }
 
 func (e *BaseElementStyle) UnsetGapColumn() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetGap(tess.Gap{Column: tess.Undefined()})
 		if err != nil {
@@ -1787,13 +1476,9 @@ func (e *BaseElementStyle) UnsetGapColumn() {
 }
 
 func (e *BaseElementStyle) UnsetOverflow() {
-	e.base.scheduleUpdate(func() error {
+	scheduleUpdate(e.base.Self(), func() error {
 		e.base.mu.Lock()
 		defer e.base.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		err := e.xyz().SetOverflow(tess.Visible)
 		if err != nil {

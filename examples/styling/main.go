@@ -55,6 +55,8 @@ func App() loom.Node {
 	})
 
 	return Box(
+		Console(term.IsDev()),
+
 		Box(
 			BindText(box1Color, Apply(styleText)),
 			Apply(styleBox, Style{BackgroundColor: box1Color}),

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/AnatoleLucet/loom-term/core/gfx"
 	"github.com/AnatoleLucet/loom-term/core/term"
@@ -33,8 +32,6 @@ type RenderContext struct {
 	pressed Element
 	hovered []Element // path from root to hovered element
 
-	scheduled bool
-
 	lastMouseX       int
 	lastMouseY       int
 	hasMousePosition bool
@@ -47,42 +44,21 @@ type RenderContext struct {
 
 func NewRenderContext(ctx context.Context, typ RenderType, root *RootElement) (*RenderContext, error) {
 	rc := &RenderContext{
-		ctx:       ctx,
-		typ:       typ,
-		root:      root,
-		hitGrid:   make(map[uint32]Element),
-		scheduler: NewScheduler(ctx),
-		errors:    make(chan error, 1),
+		ctx:     ctx,
+		typ:     typ,
+		root:    root,
+		hitGrid: make(map[uint32]Element),
+		errors:  make(chan error, 1),
 	}
+
+	rc.scheduler = NewScheduler(SchedulerOptions{
+		Context:    ctx,
+		Errors:     rc.errors,
+		Render:     rc.render,
+		PostRender: rc.postRender,
+	})
 
 	return rc, nil
-}
-
-func (rc *RenderContext) ScheduleRender() {
-	rc.mu.Lock()
-	if rc.scheduled {
-		rc.mu.Unlock()
-		return
-	}
-	rc.scheduled = true
-	rc.mu.Unlock()
-
-	rc.scheduler.Schedule(taskRender, func() error {
-		rc.mu.Lock()
-		rc.scheduled = false
-		rc.mu.Unlock()
-
-		err := rc.render()
-		if err != nil {
-			rc.emitError(err)
-		}
-
-		return nil
-	})
-}
-
-func (rc *RenderContext) Render() error {
-	return <-rc.scheduler.Schedule(taskRender, rc.render)
 }
 
 func (rc *RenderContext) render() (err error) {
@@ -95,15 +71,33 @@ func (rc *RenderContext) render() (err error) {
 	return rc.root.Render(nil, gfx.Rect{})
 }
 
-func (rc *RenderContext) ScheduleUpdate(update func() error) {
-	rc.scheduler.Schedule(taskUpdate, func() error {
-		err := update()
-		if err != nil {
-			rc.emitError(err)
-		}
+func (rc *RenderContext) postRender() (err error) {
+	rc.root.refreshMouseState()
+	return nil
+}
 
-		return nil
-	})
+func (rc *RenderContext) Errors() <-chan error {
+	return rc.errors
+}
+
+func (rc *RenderContext) PushHold() {
+	rc.scheduler.PushHold()
+}
+
+func (rc *RenderContext) PopHold() {
+	rc.scheduler.PopHold()
+}
+
+func (rc *RenderContext) Batch(fn func()) {
+	rc.scheduler.Batch(fn)
+}
+
+func (rc *RenderContext) scheduleAccess(access func()) {
+	rc.scheduler.Access(access)
+}
+
+func (rc *RenderContext) scheduleUpdate(update func() error) {
+	rc.scheduler.Update(update)
 }
 
 func (rc *RenderContext) RenderType() RenderType {
@@ -161,16 +155,20 @@ func (rc *RenderContext) SetPressedElement(element Element) {
 	rc.mu.Unlock()
 }
 
-func (rc *RenderContext) CheckHit(x, y int) Element {
-	rc.mu.RLock()
-	defer rc.mu.RUnlock()
+func (rc *RenderContext) CheckHit(x, y int) (elem Element) {
+	rc.scheduler.Access(func() {
+		rc.mu.RLock()
+		defer rc.mu.RUnlock()
 
-	id, err := rc.root.rdr.CheckHit(uint32(x), uint32(y))
-	if err != nil {
-		return nil
-	}
+		id, err := rc.root.rdr.CheckHit(uint32(x), uint32(y))
+		if err != nil {
+			return
+		}
 
-	return rc.hitGrid[id]
+		elem = rc.hitGrid[id]
+	})
+
+	return
 }
 
 func (rc *RenderContext) AddToHitGrid(element Element, rect gfx.Rect) error {
@@ -190,12 +188,12 @@ func (rc *RenderContext) ClearHitGrid() error {
 	return rc.root.rdr.ClearCurrentHitGrid()
 }
 
-func (rc *RenderContext) PushHitGridScissorRect(rect gfx.Rect) error {
-	return rc.root.rdr.HitGridPushScissorRect(int32(rect.X), int32(rect.Y), uint32(rect.Width), uint32(rect.Height))
-}
-
-func (rc *RenderContext) PopHitGridScissorRect() error {
-	return rc.root.rdr.HitGridPopScissorRect()
+func (rc *RenderContext) SetMousePosition(x, y int) {
+	rc.mu.Lock()
+	rc.lastMouseX = x
+	rc.lastMouseY = y
+	rc.hasMousePosition = true
+	rc.mu.Unlock()
 }
 
 func (rc *RenderContext) SetCursorPosition(x, y int, visible bool) error {
@@ -234,21 +232,9 @@ func (rc *RenderContext) UpdateCapabilites(buf []byte) error {
 	return nil
 }
 
-func (rc *RenderContext) SetMousePosition(x, y int) {
-	rc.mu.Lock()
-	rc.lastMouseX = x
-	rc.lastMouseY = y
-	rc.hasMousePosition = true
-	rc.mu.Unlock()
-}
-
-func (rc *RenderContext) Errors() <-chan error {
-	return rc.errors
-}
-
 func (rc *RenderContext) emitError(err error) {
 	select {
 	case rc.errors <- err:
-	case <-time.After(time.Millisecond * 50):
+	default:
 	}
 }

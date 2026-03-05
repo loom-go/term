@@ -6,50 +6,68 @@ import (
 	"github.com/AnatoleLucet/go-opentui"
 )
 
+func (a *TextAreaElement) dispatchInputEvent(value string) {
+	evt := &EventInput{Value: value}
+	evt.setTarget(a.Self())
+
+	a.rdrctx.DispatchEvent(EventTypeInput, a, evt)
+}
+
+func (a *TextAreaElement) Submit() {
+	evt := &EventSubmit{Value: a.Value()}
+	evt.setTarget(a.Self())
+
+	a.rdrctx.DispatchEvent(EventTypeSubmit, a, evt)
+}
+
 func (a *TextAreaElement) handlePaste(event *EventPaste) {
-	a.InsertText(event.Text)
-	a.rdrctx.ScheduleRender()
+	a.InsertValue(event.Value)
+	event.StopPropagation()
+	a.dispatchInputEvent(a.Value())
 }
 
 func (a *TextAreaElement) handleKeyPress(event *EventKey) {
 	switch event.Key.String() {
 	case "enter":
-		a.InsertText("\n")
-		a.rdrctx.ScheduleRender()
+		a.InsertValue("\n")
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "tab":
-		a.InsertText("\t")
-		a.rdrctx.ScheduleRender()
+		a.InsertValue("\t")
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "space":
-		a.InsertText(" ")
-		a.rdrctx.ScheduleRender()
+		a.InsertValue(" ")
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 
 	case "left", "ctrl+b":
 		a.MoveCursorLeft()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "ctrl+left":
 		a.MoveCursorWordLeft()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "right", "ctrl+f":
 		a.MoveCursorRight()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "ctrl+right":
 		a.MoveCursorWordRight()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "up":
 		a.MoveCursorUp()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "down":
 		a.MoveCursorDown()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "home":
 		a.SetCursor(0, 0)
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 	case "end":
 		lineCount := a.editBuffer.GetTextBuffer().GetLineCount()
 		a.SetCursor(lineCount-1, 0)
 		eol := a.editBuffer.GetEOL()
 		a.SetCursor(eol.Row, eol.Col)
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 
 	case "ctrl+a":
 		row, col := a.GetCursor()
@@ -57,10 +75,10 @@ func (a *TextAreaElement) handleKeyPress(event *EventKey) {
 			a.SetCursor(row-1, 0)
 			eol := a.editBuffer.GetEOL()
 			a.SetCursor(eol.Row, eol.Col)
-			a.rdrctx.ScheduleRender()
+			event.StopPropagation()
 		} else {
 			a.SetCursor(row, 0)
-			a.rdrctx.ScheduleRender()
+			event.StopPropagation()
 		}
 	case "ctrl+e":
 		row, col := a.GetCursor()
@@ -68,37 +86,44 @@ func (a *TextAreaElement) handleKeyPress(event *EventKey) {
 		lineCount := a.editBuffer.GetTextBuffer().GetLineCount()
 		if col == eol.Col && row < lineCount-1 {
 			a.SetCursor(row+1, 0)
-			a.rdrctx.ScheduleRender()
+			event.StopPropagation()
 		} else {
 			a.SetCursor(eol.Row, eol.Col)
-			a.rdrctx.ScheduleRender()
+			event.StopPropagation()
 		}
 
 	case "backspace":
 		a.RemoveLeft()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "delete", "ctrl+d":
 		a.RemoveRight()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "ctrl+w", "ctrl+backspace":
 		a.RemoveWordLeft()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "meta+d", "ctrl+delete":
 		a.RemoveWordRight()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "ctrl+k":
 		a.RemoveToLineEnd()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "ctrl+u":
 		a.RemoveToLineStart()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 	case "ctrl+shift+d":
 		a.RemoveLine()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
+		a.dispatchInputEvent(a.Value())
 
 	case "meta+enter":
 		a.Submit()
-		a.rdrctx.ScheduleRender()
+		event.StopPropagation()
 
 	default:
 		if event.Key.Ctrl() || event.Key.Alt() || event.Key.Meta() || event.Key.IsUnknown() {
@@ -107,74 +132,80 @@ func (a *TextAreaElement) handleKeyPress(event *EventKey) {
 
 		val := event.Key.Value()
 		if (val >= events.Key0 && val <= events.Key9) || event.Key.IsRune() {
-			a.InsertText(event.Key.String())
-			a.rdrctx.ScheduleRender()
+			a.InsertValue(event.Key.String())
+			event.StopPropagation()
+			a.dispatchInputEvent(a.Value())
 		}
 	}
 }
 
 func (a *TextAreaElement) handleMousePress(event *EventMouse) {
-	a.mu.RLock()
-	layout := a.xyz().GetLayout()
-	elemX := layout.AbsoluteLeft()
-	elemY := layout.AbsoluteTop()
-	a.mu.RUnlock()
+	scheduleUpdate(a.Self(), func() error {
+		a.mu.RLock()
+		layout := a.xyz().GetLayout()
+		elemX := layout.AbsoluteLeft()
+		elemY := layout.AbsoluteTop()
+		a.mu.RUnlock()
 
-	relativeX := max(0, event.X-int(elemX))
-	relativeY := max(0, event.Y-int(elemY))
+		relativeX := max(0, event.X-int(elemX))
+		relativeY := max(0, event.Y-int(elemY))
 
-	a.editBufferView.SetLocalSelection(
-		int32(relativeX), int32(relativeY),
-		int32(relativeX), int32(relativeY), // todo: impl focus on click and drag
-		nil, nil,
-		true, false,
-	)
-	a.rdrctx.ScheduleRender()
+		a.editBufferView.SetLocalSelection(
+			int32(relativeX), int32(relativeY),
+			int32(relativeX), int32(relativeY), // todo: impl focus on click and drag
+			nil, nil,
+			true, false,
+		)
+
+		return nil
+	})
 }
 
 func (a *TextAreaElement) handleMouseScroll(event *EventMouse) {
-	viewportX, viewportY, viewportW, viewportH, ok := a.editBufferView.GetViewport()
-	if !ok {
-		return
-	}
-
-	newViewportX := viewportX
-	newViewportY := viewportY
-	delta := uint32(1 * a.scrollFactor)
-
-	switch event.Button {
-	case events.MouseWheelUp:
-		newOffsetY := viewportY - delta
-		if delta > viewportY {
-			newOffsetY = 0
+	scheduleUpdate(a.Self(), func() error {
+		viewportX, viewportY, viewportW, viewportH, ok := a.editBufferView.GetViewport()
+		if !ok {
+			return nil
 		}
-		newViewportY = newOffsetY
 
-	case events.MouseWheelDown:
-		lineCount := a.editBufferView.GetTotalVirtualLineCount()
-		maxOffsetY := lineCount - viewportH
-		if viewportH > lineCount {
-			maxOffsetY = 0
-		}
-		newOffsetY := min(maxOffsetY, viewportY+delta)
-		newViewportY = newOffsetY
-	}
+		newViewportX := viewportX
+		newViewportY := viewportY
+		delta := uint32(1 * a.scrollFactor)
 
-	if a.wrapMode == opentui.WrapModeNone {
 		switch event.Button {
-		case events.MouseWheelLeft:
-			newOffsetX := viewportX - delta
-			if delta > viewportX {
-				newOffsetX = 0
+		case events.MouseWheelUp:
+			newOffsetY := viewportY - delta
+			if delta > viewportY {
+				newOffsetY = 0
 			}
-			newViewportX = newOffsetX
+			newViewportY = newOffsetY
 
-		case events.MouseWheelRight:
-			newOffsetX := viewportX + delta
-			newViewportX = newOffsetX
+		case events.MouseWheelDown:
+			lineCount := a.editBufferView.GetTotalVirtualLineCount()
+			maxOffsetY := lineCount - viewportH
+			if viewportH > lineCount {
+				maxOffsetY = 0
+			}
+			newOffsetY := min(maxOffsetY, viewportY+delta)
+			newViewportY = newOffsetY
 		}
-	}
 
-	a.editBufferView.SetViewport(newViewportX, newViewportY, viewportW, viewportH, true)
-	a.rdrctx.ScheduleRender()
+		if a.wrapMode == opentui.WrapModeNone {
+			switch event.Button {
+			case events.MouseWheelLeft:
+				newOffsetX := viewportX - delta
+				if delta > viewportX {
+					newOffsetX = 0
+				}
+				newViewportX = newOffsetX
+
+			case events.MouseWheelRight:
+				newOffsetX := viewportX + delta
+				newViewportX = newOffsetX
+			}
+		}
+
+		a.editBufferView.SetViewport(newViewportX, newViewportY, viewportW, viewportH, true)
+		return nil
+	})
 }

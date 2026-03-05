@@ -12,7 +12,6 @@ var (
 	consoleLogsStateMu sync.Mutex
 
 	consoleLogsDefaultHeight = "35%"
-	consoleLogsMinHeight     = 7
 	consoleLogsLastHeight    = 0
 )
 
@@ -87,7 +86,7 @@ func newLogsElement() (*logsElement, error) {
 		e.mu.RLock()
 		currentY := int(e.xyz().GetLayout().AbsoluteTop())
 		currentHeight := int(e.xyz().GetLayout().Height())
-		newHeight := max(consoleLogsMinHeight, currentHeight-(event.Y-currentY))
+		newHeight := max(0, currentHeight-(event.Y-currentY))
 		e.mu.RUnlock()
 
 		consoleLogsStateMu.Lock()
@@ -95,7 +94,6 @@ func newLogsElement() (*logsElement, error) {
 		consoleLogsStateMu.Unlock()
 
 		e.SetHeight(newHeight)
-		e.rdrctx.ScheduleRender()
 	})
 
 	return e, nil
@@ -149,7 +147,7 @@ func newLogsListElement() (*logsListElement, error) {
 	e.SetMaxHeight("100%")
 	e.SetFlexDirection("column")
 	e.SetJustifyContent("end")
-	e.SetScrollFactor(consoleLogsScrollFactor)
+	e.SetScrollFactorY(consoleLogsScrollFactorY)
 
 	logs, cancel := debug.Logs()
 	e.OnDestroy(cancel)
@@ -165,36 +163,33 @@ func (s *logsListElement) watchLogs(logs <-chan *debug.LogEntry) {
 	}
 }
 
-func (s *logsListElement) addLog(log *debug.LogEntry) error {
-	container, err := NewTextElement()
+func (s *logsListElement) addLog(log *debug.LogEntry) {
+	batchUpdate(s.Self(), func() {
+		container, err := NewTextElement()
 
-	level, err := NewTextElement()
-	level.SetText(fmt.Sprintf("[%s] ", log.Level))
-	level.SetTextForeground(consoleLogsLevelColors[log.Level])
+		level, err := NewTextElement()
+		level.SetText(fmt.Sprintf("[%s] ", log.Level))
+		level.SetTextForeground(consoleLogsLevelColors[log.Level])
 
-	date, err := NewTextElement()
-	date.SetText(fmt.Sprintf("[%s] ", log.Time.Format("15:04:05")))
+		date, err := NewTextElement()
+		date.SetText(fmt.Sprintf("[%s] ", log.Time.Format("15:04:05")))
 
-	message, err := NewTextElement()
-	message.SetText(log.Message)
+		message, err := NewTextElement()
+		message.SetText(log.Message)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return
+		}
 
-	container.AppendChild(level)
-	container.AppendChild(date)
-	container.AppendChild(message)
-	s.AppendChild(container)
+		container.AppendChild(level)
+		container.AppendChild(date)
+		container.AppendChild(message)
+		s.AppendChild(container)
 
-	if !s.detached {
-		s.ScrollToBottom()
-	}
-
-	if s.rdrctx != nil {
-		s.rdrctx.ScheduleRender()
-	}
-	return nil
+		if !s.detached {
+			s.ScrollToBottom()
+		}
+	})
 }
 
 func (s *logsListElement) IsDetached() bool {

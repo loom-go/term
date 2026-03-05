@@ -27,6 +27,7 @@ type BaseElementEvent struct {
 	focus map[EventPhase]*eventBroadcaster[*EventFocus]
 	blur  map[EventPhase]*eventBroadcaster[*EventBlur]
 
+	input  map[EventPhase]*eventBroadcaster[*EventInput]
 	submit map[EventPhase]*eventBroadcaster[*EventSubmit]
 
 	destroy map[EventPhase]*eventBroadcaster[struct{}]
@@ -51,6 +52,7 @@ func NewBaseElementEvent(ctx context.Context, base *BaseElement) (*BaseElementEv
 	e.focus = newPhasedEventBroadcasters[*EventFocus]()
 	e.blur = newPhasedEventBroadcasters[*EventBlur]()
 
+	e.input = newPhasedEventBroadcasters[*EventInput]()
 	e.submit = newPhasedEventBroadcasters[*EventSubmit]()
 
 	e.destroy = newPhasedEventBroadcasters[struct{}]()
@@ -223,7 +225,7 @@ func (e *BaseElementEvent) OnFocus(handler func(*EventFocus), options ...EventOp
 		return func() {}
 	}
 
-	return newEventHandler(e.focus[eventPhaseFromOptions(options...)], handler)
+	return newEventHandler(e.focus[EventPhaseDefault], handler)
 }
 
 func (e *BaseElementEvent) focusAction(handler func(*EventFocus)) (remove func()) {
@@ -239,7 +241,7 @@ func (e *BaseElementEvent) OnBlur(handler func(*EventBlur), options ...EventOpti
 		return func() {}
 	}
 
-	return newEventHandler(e.blur[eventPhaseFromOptions(options...)], handler)
+	return newEventHandler(e.blur[EventPhaseDefault], handler)
 }
 
 func (e *BaseElementEvent) blurAction(handler func(*EventBlur)) (remove func()) {
@@ -248,6 +250,22 @@ func (e *BaseElementEvent) blurAction(handler func(*EventBlur)) (remove func()) 
 	}
 
 	return newEventHandler(e.blur[EventPhaseAction], handler)
+}
+
+func (e *BaseElementEvent) OnInput(handler func(*EventInput), options ...EventOptions) (remove func()) {
+	if err := guardDestroyed(e.ctx); err != nil {
+		return func() {}
+	}
+
+	return newEventHandler(e.input[eventPhaseFromOptions(options...)], handler)
+}
+
+func (e *BaseElementEvent) inputAction(handler func(*EventInput)) (remove func()) {
+	if err := guardDestroyed(e.ctx); err != nil {
+		return func() {}
+	}
+
+	return newEventHandler(e.input[EventPhaseAction], handler)
 }
 
 func (e *BaseElementEvent) OnSubmit(handler func(*EventSubmit), options ...EventOptions) (remove func()) {
@@ -311,6 +329,8 @@ func (e *BaseElementEvent) broadcastEvent(typ EventType, event any) {
 	case EventTypeBlur:
 		e.blur[phase].Broadcast(event.(*EventBlur))
 
+	case EventTypeInput:
+		e.input[phase].Broadcast(event.(*EventInput))
 	case EventTypeSubmit:
 		e.submit[phase].Broadcast(event.(*EventSubmit))
 
@@ -360,6 +380,9 @@ func (e *BaseElementEvent) free() {
 		b.Clear()
 	}
 
+	for _, b := range e.input {
+		b.Clear()
+	}
 	for _, b := range e.submit {
 		b.Clear()
 	}

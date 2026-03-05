@@ -1,7 +1,6 @@
 package elements
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/AnatoleLucet/loom-term/core/gfx"
@@ -18,7 +17,7 @@ type RootElement struct {
 	rdr *opentui.Renderer
 }
 
-func NewRootElement(typ RenderType) (e *RootElement, err error) {
+func NewRootElement(typ RenderType) (root *RootElement, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Root: %w: %w", ErrFailedToInitializeRoot, err)
@@ -30,34 +29,25 @@ func NewRootElement(typ RenderType) (e *RootElement, err error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	e = &RootElement{
-		BaseElement: base,
-		cb:          gfx.NewCommandBuffer(ctx),
-		rdr:         opentui.NewRenderer(1, 1),
-	}
+	root = &RootElement{BaseElement: base}
+	root.cb = gfx.NewCommandBuffer(root.ctx)
+	root.rdr = opentui.NewRenderer(1, 1)
 
-	rc, err := NewRenderContext(ctx, typ, e)
+	rc, err := NewRenderContext(root.ctx, typ, root)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
-	e.setContextUnsafe(rc)
+	root.SetRenderContext(rc)
 
-	go e.listenToMouseEvents(ctx)
-	go e.listenToKeyboardEvents(ctx)
-	go e.listenToResizeEvents(ctx)
-	go e.listenToCapabilites(ctx)
-	go e.listenToExitEvents(ctx)
+	go root.listenToMouseEvents(root.ctx)
+	go root.listenToKeyboardEvents(root.ctx)
+	go root.listenToResizeEvents(root.ctx)
+	go root.listenToCapabilites(root.ctx)
+	go root.listenToExitEvents(root.ctx)
 
-	e.OnDestroy(func() {
-		cancel()
-		e.rdr.Close()
+	root.OnDestroy(func() {
+		root.rdr.Close()
 	})
 
-	return e, nil
-}
-
-func (r *RootElement) RenderContext() *RenderContext {
-	return r.rdrctx
+	return root, nil
 }

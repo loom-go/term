@@ -2,8 +2,9 @@ package term
 
 import (
 	"fmt"
-	"github.com/AnatoleLucet/loom-term/core/stdio"
 	"os"
+
+	"github.com/AnatoleLucet/loom-term/core/stdio"
 
 	"golang.org/x/term"
 )

@@ -4,11 +4,15 @@ import (
 	"fmt"
 
 	"github.com/AnatoleLucet/loom"
+	appctx "github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/internal/app"
 )
 
-func Console() loom.Node {
+func Console(enabled ...bool) loom.Node {
+	if len(enabled) > 0 && !enabled[0] {
+		return nil
+	}
+
 	return &consoleNode{}
 }
 
@@ -25,7 +29,7 @@ func (n *consoleNode) ID() string {
 }
 
 func (n *consoleNode) Mount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
 		return fmt.Errorf("Console: %w", err)
 	}
@@ -40,6 +44,8 @@ func (n *consoleNode) Mount(slot *loom.Slot) error {
 
 	self.remove = ctx.Root().OnKeyPress(func(event *core.EventKey) {
 		if event.Key.String() == "`" {
+			event.PreventDefault()
+
 			if self.visible {
 				ctx.Root().RemoveChild(self.element)
 				self.visible = false
@@ -47,8 +53,6 @@ func (n *consoleNode) Mount(slot *loom.Slot) error {
 				ctx.Root().AppendChild(self.element)
 				self.visible = true
 			}
-
-			ctx.ScheduleRender()
 		}
 	})
 
@@ -60,22 +64,19 @@ func (n *consoleNode) Update(slot *loom.Slot) error {
 }
 
 func (n *consoleNode) Unmount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
 		return fmt.Errorf("Console: %w", err)
 	}
 
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
-
 	self := slot.Self().(*consoleState)
 
-	self.element.Destroy()
-	if self.remove != nil {
-		self.remove()
-	}
+	return ctx.BatchRender(func() error {
+		self.element.Destroy()
+		if self.remove != nil {
+			self.remove()
+		}
 
-	ctx.RequestRender()
-
-	return nil
+		return nil
+	})
 }

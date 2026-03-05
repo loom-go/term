@@ -15,6 +15,8 @@ import (
 	"github.com/AnatoleLucet/tess"
 )
 
+// todo: this file need some work. BaseElement is becoming quite big and it's are to reuse only parts of it
+
 var nextID atomic.Uint32
 
 func newID() uint32 {
@@ -81,17 +83,23 @@ func (b *BaseElement) unlock() {
 	b.mu.Unlock()
 }
 
-func (b *BaseElement) scheduleUpdate(fn func() error) {
-	if b.rdrctx == nil {
-		b.mu.Lock()
-		b.pendingUpdates = append(b.pendingUpdates, fn)
-		b.mu.Unlock()
-	} else {
-		b.rdrctx.ScheduleUpdate(fn)
-	}
+func (b *BaseElement) context() context.Context {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.ctx
+}
+
+func (b *BaseElement) RenderContext() (ctx *RenderContext) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.rdrctx
 }
 
 func (b *BaseElement) ID() uint32 {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.id
 }
 
@@ -103,11 +111,14 @@ func (b *BaseElement) Self() Element {
 	return b.self
 }
 
-func (b *BaseElement) Parent() Element {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+func (b *BaseElement) Parent() (parent Element) {
+	scheduleAccess(b.Self(), func() {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+		parent = b.parent
+	})
 
-	return b.parent
+	return
 }
 
 func (b *BaseElement) parentUnsafe() Element {
@@ -115,7 +126,7 @@ func (b *BaseElement) parentUnsafe() Element {
 }
 
 func (b *BaseElement) SetParent(parent Element) {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
 		defer b.mu.Unlock()
 
@@ -124,19 +135,19 @@ func (b *BaseElement) SetParent(parent Element) {
 }
 
 func (b *BaseElement) setParentUnsafe(parent Element) error {
-	if err := guardDestroyed(b.ctx); err != nil {
-		return err
-	}
-
 	b.parent = parent
 	return nil
 }
 
-func (b *BaseElement) Children() iter.Seq[Element] {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+func (b *BaseElement) Children() (children iter.Seq[Element]) {
+	scheduleAccess(b.Self(), func() {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
 
-	return b.Self().childrenUnsafe()
+		children = b.Self().childrenUnsafe()
+	})
+
+	return
 }
 
 func (b *BaseElement) childrenUnsafe() iter.Seq[Element] {
@@ -153,39 +164,31 @@ func (b *BaseElement) childrenUnsafe() iter.Seq[Element] {
 }
 
 func (b *BaseElement) AppendChild(child Element) {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
-		err := b.Self().appendChildUnsafe(child)
-		b.mu.Unlock()
-		if err != nil {
-			return err
-		}
+		defer b.mu.Unlock()
 
-		return b.Self().flushPendingUpdates()
+		return b.Self().appendChildUnsafe(child)
 	})
 }
 
 func (b *BaseElement) appendChildUnsafe(child Element) error {
-	if err := guardDestroyed(b.ctx); err != nil {
-		return err
-	}
-
 	if child.parentUnsafe() != nil {
 		return fmt.Errorf("%w: child already has a parent", ErrFailedToAppendChild)
 	}
 
-	b.xyz().AppendChild(child.xyz())
-
 	zindex := child.zindexUnsafe()
+
+	b.xyz().AppendChild(child.xyz())
 	b.children[zindex] = append(b.children[zindex], child)
 
 	child.setParentUnsafe(b.Self())
-	child.setContextUnsafe(b.rdrctx)
+	child.SetRenderContext(b.rdrctx)
 	return nil
 }
 
 func (b *BaseElement) RemoveChild(child Element) {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
 		defer b.mu.Unlock()
 
@@ -194,10 +197,6 @@ func (b *BaseElement) RemoveChild(child Element) {
 }
 
 func (b *BaseElement) removeChildUnsafe(child Element) error {
-	if err := guardDestroyed(b.ctx); err != nil {
-		return err
-	}
-
 	zindex := child.zindexUnsafe()
 	children, ok := b.children[zindex]
 	if !ok {
@@ -213,19 +212,13 @@ func (b *BaseElement) removeChildUnsafe(child Element) error {
 	b.children[zindex] = slices.Delete(children, i, i+1)
 
 	child.setParentUnsafe(nil)
-	child.setContextUnsafe(nil)
+	child.SetRenderContext(nil)
 	return nil
 }
 
 func (b *BaseElement) Focus() {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
-
-		if err := guardDestroyed(b.ctx); err != nil {
-			b.mu.Unlock()
-			return err
-		}
-
 		if b.focused || !b.focusable {
 			b.mu.Unlock()
 			return nil
@@ -254,14 +247,8 @@ func (b *BaseElement) Focus() {
 }
 
 func (b *BaseElement) Blur() {
-	b.scheduleUpdate(func() error {
+	scheduleUpdate(b.Self(), func() error {
 		b.mu.Lock()
-
-		if err := guardDestroyed(b.ctx); err != nil {
-			b.mu.Unlock()
-			return nil
-		}
-
 		if !b.focused {
 			b.mu.Unlock()
 			return nil
@@ -311,19 +298,10 @@ func (b *BaseElement) Render(buf *opentui.Buffer, rect gfx.Rect) error {
 }
 
 func (b *BaseElement) Destroy() {
-	b.scheduleUpdate(func() error {
-		b.mu.Lock()
-		if err := guardDestroyed(b.ctx); err != nil {
-			b.mu.Unlock()
-			return nil
-		}
-
+	scheduleUpdate(b.Self(), func() error {
 		if b.parent != nil {
-			b.parent.lock()
 			b.parent.removeChildUnsafe(b.Self())
-			b.parent.unlock()
 		}
-		b.mu.Unlock()
 
 		b.Self().destroyUnsafe()
 		return nil
@@ -384,7 +362,6 @@ func (b *BaseElement) setFocusable() (unset func()) {
 
 	remove := b.mousePressAction(func(e *EventMouse) {
 		b.Self().Focus()
-		b.rdrctx.ScheduleRender()
 	})
 
 	return func() {
@@ -395,35 +372,59 @@ func (b *BaseElement) setFocusable() (unset func()) {
 	}
 }
 
-func (b *BaseElement) setContextUnsafe(ctx *RenderContext) {
-	b.rdrctx = ctx
-	b.BaseElementStyle.rdrctx = ctx
-	b.BaseElementEvent.rdrctx = ctx
+func (b *BaseElement) addPendingUpdate(fn func() error) {
+	b.mu.Lock()
+	b.pendingUpdates = append(b.pendingUpdates, fn)
+	b.mu.Unlock()
+}
 
-	for child := range b.Self().childrenUnsafe() {
-		child.lock()
-		child.setContextUnsafe(ctx)
-		child.unlock()
+func (b *BaseElement) SetRenderContext(ctx *RenderContext) {
+	batchUpdate(b.Self(), func() {
+		b.rdrctx = ctx
+		b.BaseElementStyle.rdrctx = ctx
+		b.BaseElementEvent.rdrctx = ctx
+
+		for child := range b.Self().childrenUnsafe() {
+			child.SetRenderContext(ctx)
+		}
+
+		if ctx != nil {
+			for _, pending := range b.pendingUpdates {
+				scheduleUpdate(b.Self(), pending)
+			}
+			b.pendingUpdates = nil
+		}
+	})
+}
+
+func scheduleAccess(e Element, fn func()) {
+	if e.RenderContext() == nil {
+		fn()
+	} else {
+		e.RenderContext().scheduleAccess(fn)
 	}
 }
 
-func (b *BaseElement) flushPendingUpdates() error {
-	for child := range b.Self().childrenUnsafe() {
-		child.flushPendingUpdates()
+func batchUpdate(e Element, fn func()) {
+	if e.RenderContext() == nil {
+		fn()
+	} else {
+		e.RenderContext().Batch(fn)
 	}
+}
 
-	b.mu.Lock()
-	updates := b.pendingUpdates
-	b.pendingUpdates = nil
-	b.mu.Unlock()
+func scheduleUpdate(e Element, fn func() error) {
+	if e.RenderContext() == nil {
+		e.Self().addPendingUpdate(fn)
+	} else {
+		e.RenderContext().scheduleUpdate(func() error {
+			if err := guardDestroyed(e.context()); err != nil {
+				return err
+			}
 
-	for _, pending := range updates {
-		if err := pending(); err != nil {
-			return err
-		}
+			return fn()
+		})
 	}
-
-	return nil
 }
 
 func guardDestroyed(ctx context.Context) error {

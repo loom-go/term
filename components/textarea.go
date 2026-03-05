@@ -4,34 +4,34 @@ import (
 	"fmt"
 
 	"github.com/AnatoleLucet/loom"
-	appctx "github.com/AnatoleLucet/loom-term/components/context"
+	"github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
 )
 
-func Box(children ...loom.Node) loom.Node {
-	return &boxNode{
+func TextArea(children ...loom.Node) loom.Node {
+	return &textAreaNode{
 		children: children,
 	}
 }
 
-type boxNode struct {
+type textAreaNode struct {
 	children []loom.Node
 }
 
-func (n *boxNode) ID() string {
-	return "term.Box"
+func (n *textAreaNode) ID() string {
+	return "term.TextArea"
 }
 
-func (n *boxNode) Mount(slot *loom.Slot) error {
+func (n *textAreaNode) Mount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("TextArea: %w", err)
 	}
 
 	parent := slot.Parent().(core.Element)
-	self, err := core.NewBoxElement()
+	self, err := core.NewTextAreaElement()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("TextArea: %w", err)
 	}
 	slot.SetSelf(self)
 
@@ -41,10 +41,10 @@ func (n *boxNode) Mount(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Update(slot *loom.Slot) error {
+func (n *textAreaNode) Update(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("TextArea: %w", err)
 	}
 
 	return ctx.BatchRender(func() error {
@@ -52,10 +52,10 @@ func (n *boxNode) Update(slot *loom.Slot) error {
 	})
 }
 
-func (n *boxNode) Unmount(slot *loom.Slot) error {
+func (n *textAreaNode) Unmount(slot *loom.Slot) error {
 	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("Box: %w", err)
+		return fmt.Errorf("TextArea: %w", err)
 	}
 
 	self := slot.Self().(core.Element)

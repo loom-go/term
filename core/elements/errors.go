@@ -3,7 +3,9 @@ package elements
 import "errors"
 
 var (
-	ErrPanicDuringRender     = errors.New("panic during render")
+	ErrPanicDuringRender = errors.New("panic during render")
+	ErrPanicDuringUpdate = errors.New("panic during update")
+
 	ErrFailedToRenderFrame   = errors.New("failed to render frame")
 	ErrFailedToComputeLayout = errors.New("failed to compute layout")
 	ErrFailedToRecordFrame   = errors.New("failed to record frame")

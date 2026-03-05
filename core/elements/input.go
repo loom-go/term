@@ -35,29 +35,24 @@ func NewInputElement() (input *InputElement, err error) {
 }
 
 func (i *InputElement) SetHeight(height any) {
-	i.scheduleUpdate(func() error {
-		return guardDestroyed(i.ctx)
-	})
+	scheduleUpdate(i.Self(), func() error { return nil })
 }
 func (i *InputElement) SetWrap(wrap any) {
-	i.scheduleUpdate(func() error {
-		return guardDestroyed(i.ctx)
-	})
+	scheduleUpdate(i.Self(), func() error { return nil })
 }
 
-func (i *InputElement) SetText(text string) {
-	i.TextAreaElement.SetText(i.sanitize(text))
+func (i *InputElement) SetValue(text string) {
+	i.TextAreaElement.SetValue(i.sanitize(text))
 }
 
-func (i *InputElement) InsertText(text string) {
-	i.TextAreaElement.InsertText(i.sanitize(text))
+func (i *InputElement) InsertValue(text string) {
+	i.TextAreaElement.InsertValue(i.sanitize(text))
 }
 
 func (i *InputElement) handleKeyPress(event *EventKey) {
 	key := event.Key.String()
 	if key == "enter" {
 		i.Submit()
-		i.rdrctx.ScheduleRender()
 		return
 	}
 
@@ -66,7 +61,7 @@ func (i *InputElement) handleKeyPress(event *EventKey) {
 
 func (i *InputElement) handlePaste(event *EventPaste) {
 	evt := &EventPaste{EventPaste: events.EventPaste{
-		Text: i.sanitize(event.Text),
+		Value: i.sanitize(event.Value),
 	}}
 	evt.setTarget(event.Target())
 

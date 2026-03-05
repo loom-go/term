@@ -30,9 +30,14 @@ type EventBlur struct {
 	Focused Element
 }
 
+type EventInput struct {
+	Event
+	Value string
+}
+
 type EventSubmit struct {
 	Event
-	Text string
+	Value string
 }
 
 type EventType string
@@ -54,6 +59,7 @@ const (
 	EventTypeFocus EventType = "focus"
 	EventTypeBlur  EventType = "blur"
 
+	EventTypeInput  EventType = "input"
 	EventTypeSubmit EventType = "submit"
 
 	EventTypeDestroy EventType = "destroy"

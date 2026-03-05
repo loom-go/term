@@ -79,6 +79,11 @@ type Style struct {
 	TextDecoration any // "none" | "underline" | "line-through" | func() any
 	TextWrap       any // "none" | "word" | "char" | func() any
 
+	PlaceholderColor      any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
+	PlaceholderDropColor  any // "transparent" | "#RGB" | "#RRGGBBAA" | func() any
+	PlaceholderFontWeight any // "normal" | "bold" | func() any
+	PlaceholderFontStyle  any // "normal" | "italic" | func() any
+	PlaceholderDecoration any // "none" | "underline" | "line-through" | func() any
 }
 
 // helper for "<value>pt"

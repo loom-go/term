@@ -13,52 +13,39 @@ const (
 )
 
 type RootElement = *elements.RootElement
-type RenderContext = *elements.RenderContext
 
 type Renderer struct {
-	root *elements.RootElement
-
-	ctx context.Context
+	ctx    context.Context
+	rdrctx *elements.RenderContext
+	root   RootElement
 }
 
 func NewRenderer(typ RenderType) (*Renderer, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	root, err := elements.NewRootElement(typ)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	r := &Renderer{root: root, ctx: ctx}
+	rdrctx, err := elements.NewRenderContext(ctx, typ, root)
+	if err != nil {
+		return nil, err
+	}
 
-	r.Root().OnDestroy(cancel)
+	root.OnDestroy(cancel)
+	root.SetRenderContext(rdrctx)
 
-	return r, nil
+	return &Renderer{root: root, rdrctx: rdrctx, ctx: ctx}, nil
 }
 
-func (r *Renderer) Root() RootElement {
-	return r.root
-}
+func (r *Renderer) Root() RootElement      { return r.root }
+func (r *Renderer) Errors() <-chan error   { return r.rdrctx.Errors() }
+func (r *Renderer) RenderType() RenderType { return r.rdrctx.RenderType() }
 
-func (r *Renderer) Render() error {
-	return r.root.RenderContext().Render()
-}
+func (r *Renderer) PushHold()       { r.rdrctx.PushHold() }
+func (r *Renderer) PopHold()        { r.rdrctx.PopHold() }
+func (r *Renderer) Batch(fn func()) { r.rdrctx.Batch(fn) }
 
-func (r *Renderer) ScheduleRender() {
-	r.root.RenderContext().ScheduleRender()
-}
-
-func (r *Renderer) Errors() <-chan error {
-	return r.root.RenderContext().Errors()
-}
-
-func (r *Renderer) Wait() {
-	<-r.ctx.Done()
-}
-
-func (r *Renderer) Close() {
-	r.root.Destroy()
-}
-
-func (r *Renderer) Closed() <-chan struct{} {
-	return r.ctx.Done()
-}
+func (r *Renderer) Close()                  { r.root.Destroy() }
+func (r *Renderer) Closed() <-chan struct{} { return r.ctx.Done() }

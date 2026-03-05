@@ -59,7 +59,6 @@ func getStyleStack(elem core.Element) *styleStack {
 	return stack
 }
 
-// todo: return ok wether it applied any style or not, so that we can avoid unnecessary renders
 func applyStyle(elem core.Element, style Style) {
 	applyStyleDimension(elem, style)
 	applyStylePositionning(elem, style)
@@ -70,6 +69,7 @@ func applyStyle(elem core.Element, style Style) {
 	applyStyleOverflow(elem, style)
 	applyStyleBackground(elem, style)
 	applyStyleText(elem, style)
+	applyStylePlaceholder(elem, style)
 }
 
 func applyStyleDimension(elem core.Element, style Style) {
@@ -195,6 +195,10 @@ func applyStyleBorder(elem core.Element, style Style) {
 	if e, v, ok := assertSetter[interface{ SetBorderRight(string) }, string](elem, style.BorderRight); ok && v != "" {
 		e.SetBorderRight(v)
 	}
+
+	if e, v, ok := assertSetter[interface{ SetBorderColor(string) }, string](elem, style.BorderColor); ok && v != "" {
+		e.SetBorderColor(v)
+	}
 }
 
 func applyStyleDisplay(elem core.Element, style Style) {
@@ -279,6 +283,26 @@ func applyStyleText(elem core.Element, style Style) {
 	}
 }
 
+func applyStylePlaceholder(elem core.Element, style Style) {
+	if e, v, ok := assertSetter[interface{ SetPlaceholderForeground(string) }, string](elem, style.PlaceholderColor); ok && v != "" {
+		e.SetPlaceholderForeground(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetPlaceholderBackground(string) }, string](elem, style.PlaceholderDropColor); ok && v != "" {
+		e.SetPlaceholderBackground(v)
+	}
+
+	if e, v, ok := assertSetter[interface{ SetPlaceholderFontWeight(string) }, string](elem, style.PlaceholderFontWeight); ok && v != "" {
+		e.SetPlaceholderFontWeight(v)
+	}
+	if e, v, ok := assertSetter[interface{ SetPlaceholderFontStyle(string) }, string](elem, style.PlaceholderFontStyle); ok && v != "" {
+		e.SetPlaceholderFontStyle(v)
+	}
+
+	if e, v, ok := assertSetter[interface{ SetPlaceholderDecoration(string) }, string](elem, style.PlaceholderDecoration); ok && v != "" {
+		e.SetPlaceholderDecoration(v)
+	}
+}
+
 func removeStyle(elem core.Element, style Style) {
 	removeStyleDimension(elem, style)
 	removeStylePositionning(elem, style)
@@ -289,6 +313,7 @@ func removeStyle(elem core.Element, style Style) {
 	removeStyleOverflow(elem, style)
 	removeStyleBackground(elem, style)
 	removeStyleText(elem, style)
+	removeStylePlaceholder(elem, style)
 }
 
 func removeStyleDimension(elem core.Element, style Style) {
@@ -429,6 +454,12 @@ func removeStyleBorder(elem core.Element, style Style) {
 			n.UnsetBorderRight()
 		}
 	}
+
+	if style.BorderColor != nil {
+		if n, ok := elem.(interface{ UnsetBorderColor() }); ok {
+			n.UnsetBorderColor()
+		}
+	}
 }
 
 func removeStyleDisplay(elem core.Element, style Style) {
@@ -518,6 +549,36 @@ func removeStyleText(elem core.Element, style Style) {
 	if style.TextWrap != nil {
 		if n, ok := elem.(interface{ UnsetWrap() }); ok {
 			n.UnsetWrap()
+		}
+	}
+}
+
+func removeStylePlaceholder(elem core.Element, style Style) {
+	if style.PlaceholderColor != nil {
+		if n, ok := elem.(interface{ UnsetPlaceholderForeground() }); ok {
+			n.UnsetPlaceholderForeground()
+		}
+	}
+	if style.PlaceholderDropColor != nil {
+		if n, ok := elem.(interface{ UnsetPlaceholderBackground() }); ok {
+			n.UnsetPlaceholderBackground()
+		}
+	}
+
+	if style.PlaceholderFontWeight != nil {
+		if n, ok := elem.(interface{ UnsetPlaceholderFontWeight() }); ok {
+			n.UnsetPlaceholderFontWeight()
+		}
+	}
+	if style.PlaceholderFontStyle != nil {
+		if n, ok := elem.(interface{ UnsetPlaceholderFontStyle() }); ok {
+			n.UnsetPlaceholderFontStyle()
+		}
+	}
+
+	if style.PlaceholderDecoration != nil {
+		if n, ok := elem.(interface{ UnsetPlaceholderDecoration() }); ok {
+			n.UnsetPlaceholderDecoration()
 		}
 	}
 }

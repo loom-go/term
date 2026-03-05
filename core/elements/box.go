@@ -57,13 +57,9 @@ func NewBoxElement() (box *BoxElement, err error) {
 }
 
 func (e *BoxElement) SetTitle(title string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.title = title
 		return nil
@@ -71,13 +67,9 @@ func (e *BoxElement) SetTitle(title string) {
 }
 
 func (e *BoxElement) UnsetTitle() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.title = ""
 		return nil
@@ -86,13 +78,9 @@ func (e *BoxElement) UnsetTitle() {
 
 // left | center | right
 func (e *BoxElement) SetTitleAlignment(alignment string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		align, ok := textAlignments[alignment]
 		if !ok {
@@ -105,13 +93,9 @@ func (e *BoxElement) SetTitleAlignment(alignment string) {
 }
 
 func (e *BoxElement) UnsetTitleAlignment() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.titleAlignment = opentui.AlignLeft
 		return nil
@@ -120,13 +104,9 @@ func (e *BoxElement) UnsetTitleAlignment() {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderAll(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -140,13 +120,9 @@ func (e *BoxElement) SetBorderAll(style string) {
 }
 
 func (e *BoxElement) UnsetBorderAll() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		e.borderChars = opentui.BorderChars{}
 		e.borderSides = opentui.BorderSides{}
@@ -156,13 +132,9 @@ func (e *BoxElement) UnsetBorderAll() {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderHorizontal(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -178,13 +150,9 @@ func (e *BoxElement) SetBorderHorizontal(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderVertical(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -200,13 +168,9 @@ func (e *BoxElement) SetBorderVertical(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderTop(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -221,13 +185,9 @@ func (e *BoxElement) SetBorderTop(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderRight(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -242,13 +202,9 @@ func (e *BoxElement) SetBorderRight(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderBottom(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -263,13 +219,9 @@ func (e *BoxElement) SetBorderBottom(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderLeft(style string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		chars, ok := borderStyles[style]
 		if !ok {
@@ -284,26 +236,18 @@ func (e *BoxElement) SetBorderLeft(style string) {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBorderColor(color string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.borderColor.Set(color)
 	})
 }
 
 func (e *BoxElement) UnsetBorderColor() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.borderColor.Set("transparent")
 	})
@@ -311,52 +255,36 @@ func (e *BoxElement) UnsetBorderColor() {
 
 // single | double | rounded | heavy
 func (e *BoxElement) SetBackgroundColor(color string) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.backgroundColor.Set(color)
 	})
 }
 
 func (e *BoxElement) UnsetBackgroundColor() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.backgroundColor.Set("transparent")
 	})
 }
 
 func (e *BoxElement) SetBackgroundOpacity(opacity float32) {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.backgroundColor.SetOpacity(opacity)
 	})
 }
 
 func (e *BoxElement) UnsetBackgroundOpacity() {
-	e.scheduleUpdate(func() error {
+	scheduleUpdate(e.Self(), func() error {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-
-		if err := guardDestroyed(e.ctx); err != nil {
-			return err
-		}
 
 		return e.backgroundColor.UnsetOpacity()
 	})

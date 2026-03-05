@@ -57,11 +57,11 @@ func App() loom.Node {
 	}()
 
 	return Box(
-		Console(),
+		Console(term.IsDev()), // only enable the console when the program is run with "go run"
 
 		Box(
 			B(Text("LoomTerm Console")),
-			Br(),
+			Text(""),
 			Text("Press '`' to open the console."),
 			Apply(styleContent),
 		),

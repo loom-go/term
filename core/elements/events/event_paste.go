@@ -3,9 +3,9 @@ package events
 import "fmt"
 
 type EventPaste struct {
-	Text string
+	Value string
 }
 
 func (e EventPaste) String() string {
-	return fmt.Sprintf("Paste(%q)", e.Text)
+	return fmt.Sprintf("Paste(%q)", e.Value)
 }

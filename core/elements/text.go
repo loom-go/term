@@ -79,11 +79,15 @@ func NewTextElement() (text *TextElement, err error) {
 	return text, nil
 }
 
-func (t *TextElement) Children() iter.Seq[Element] {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+func (t *TextElement) Children() (children iter.Seq[Element]) {
+	scheduleAccess(t.Self(), func() {
+		t.mu.RLock()
+		defer t.mu.RUnlock()
 
-	return t.childrenUnsafe()
+		children = t.childrenUnsafe()
+	})
+
+	return
 }
 
 func (t *TextElement) childrenUnsafe() iter.Seq[Element] {
@@ -97,15 +101,11 @@ func (t *TextElement) childrenUnsafe() iter.Seq[Element] {
 }
 
 func (t *TextElement) AppendChild(child Element) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
-		err := t.appendChildUnsafe(child)
-		t.mu.Unlock()
-		if err != nil {
-			return err
-		}
+		defer t.mu.Unlock()
 
-		err = t.flushPendingUpdates()
+		err := t.appendChildUnsafe(child)
 		if err != nil {
 			return err
 		}
@@ -121,10 +121,6 @@ func (t *TextElement) appendChildUnsafe(child Element) error {
 		return nil
 	}
 
-	if err := guardDestroyed(t.ctx); err != nil {
-		return err
-	}
-
 	if c.parentUnsafe() != nil {
 		return fmt.Errorf("%w: child already has a parent", ErrFailedToAppendChild)
 	}
@@ -133,15 +129,16 @@ func (t *TextElement) appendChildUnsafe(child Element) error {
 
 	c.rootText = t.rootTextElement()
 	c.setParentUnsafe(t.Self())
-	c.setContextUnsafe(t.rdrctx)
+	c.SetRenderContext(t.rdrctx)
 	return nil
 }
 
 func (t *TextElement) RemoveChild(child Element) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
+		defer t.mu.Unlock()
+
 		err := t.removeChildUnsafe(child)
-		t.mu.Unlock()
 		if err != nil {
 			return err
 		}
@@ -157,10 +154,6 @@ func (t *TextElement) removeChildUnsafe(child Element) error {
 		return nil
 	}
 
-	if err := guardDestroyed(t.ctx); err != nil {
-		return err
-	}
-
 	i := slices.Index(t.children, c)
 	if i == -1 {
 		return fmt.Errorf("%w: child not found", ErrFailedToRemoveChild)
@@ -170,7 +163,7 @@ func (t *TextElement) removeChildUnsafe(child Element) error {
 
 	c.rootText = nil
 	c.setParentUnsafe(nil)
-	c.setContextUnsafe(nil)
+	c.SetRenderContext(nil)
 	return nil
 }
 
@@ -191,25 +184,21 @@ func (t *TextElement) Render(buffer *opentui.Buffer, rect gfx.Rect) error {
 	return buffer.DrawTextBufferView(t.textBufferView, int32(rect.X), int32(rect.Y))
 }
 
-func (t *TextElement) Text() string {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+func (t *TextElement) Text() (text string) {
+	scheduleAccess(t.Self(), func() {
+		t.mu.RLock()
+		defer t.mu.RUnlock()
 
-	if err := guardDestroyed(t.ctx); err != nil {
-		return ""
-	}
+		text = t.text()
+	})
 
-	return t.text()
+	return
 }
 
 func (t *TextElement) SetText(text string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetText(text)
 		t.update()
@@ -218,13 +207,9 @@ func (t *TextElement) SetText(text string) {
 }
 
 func (t *TextElement) UnsetText() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetText()
 		t.update()
@@ -234,13 +219,9 @@ func (t *TextElement) UnsetText() {
 
 // normal | bold
 func (t *TextElement) SetFontWeight(weight string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetFontWeight(weight)
 		t.update()
@@ -249,13 +230,9 @@ func (t *TextElement) SetFontWeight(weight string) {
 }
 
 func (t *TextElement) UnsetFontWeight() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetFontWeight()
 		t.update()
@@ -265,13 +242,9 @@ func (t *TextElement) UnsetFontWeight() {
 
 // normal | italic
 func (t *TextElement) SetFontStyle(style string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetFontStyle(style)
 		t.update()
@@ -280,13 +253,9 @@ func (t *TextElement) SetFontStyle(style string) {
 }
 
 func (t *TextElement) UnsetFontStyle() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetFontStyle()
 		t.update()
@@ -296,13 +265,9 @@ func (t *TextElement) UnsetFontStyle() {
 
 // none | underline | strikethrough
 func (t *TextElement) SetTextDecoration(decoration string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetTextDecoration(decoration)
 		t.update()
@@ -311,13 +276,9 @@ func (t *TextElement) SetTextDecoration(decoration string) {
 }
 
 func (t *TextElement) UnsetTextDecoration() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetTextDecoration()
 		t.update()
@@ -327,13 +288,9 @@ func (t *TextElement) UnsetTextDecoration() {
 
 // none | word | all
 func (t *TextElement) SetWrap(mode string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		wrapMode, ok := wrapModes[mode]
 		if !ok {
@@ -351,13 +308,9 @@ func (t *TextElement) UnsetWrap() {
 }
 
 func (t *TextElement) SetTextForeground(color string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetTextForeground(color)
 		t.update()
@@ -366,13 +319,9 @@ func (t *TextElement) SetTextForeground(color string) {
 }
 
 func (t *TextElement) UnsetTextForeground() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetTextForeground()
 		t.update()
@@ -381,13 +330,9 @@ func (t *TextElement) UnsetTextForeground() {
 }
 
 func (t *TextElement) SetTextBackground(color string) {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.SetTextBackground(color)
 		t.update()
@@ -396,13 +341,9 @@ func (t *TextElement) SetTextBackground(color string) {
 }
 
 func (t *TextElement) UnsetTextBackground() {
-	t.scheduleUpdate(func() error {
+	scheduleUpdate(t.Self(), func() error {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-
-		if err := guardDestroyed(t.ctx); err != nil {
-			return err
-		}
 
 		t.chunk.UnsetTextBackground()
 		t.update()
@@ -434,13 +375,13 @@ func (t *TextElement) update() {
 
 	root.xyz().MarkDirty()
 	root.textBuffer.Reset()
-	root.textBuffer.SetStyledText(t.chunks(root))
+	root.textBuffer.SetStyledText(root.chunks(nil))
 }
 
 func (t *TextElement) chunks(parent *TextElement) []opentui.StyledChunk {
 	chunks := []opentui.StyledChunk{}
 	if t.chunk.Text() != "" {
-		chunks = append(chunks, t.chunk.StyledChunk(parent.chunk))
+		chunks = append(chunks, t.chunk.StyledChunk(t.chunk))
 	}
 
 	for _, child := range t.children {

@@ -64,6 +64,8 @@ func (n *eventNode[T]) Update(slot *loom.Slot) error {
 		remove = parent.OnFocus(func(event *core.EventFocus) { n.dispatch(event) })
 	case "blur":
 		remove = parent.OnBlur(func(event *core.EventBlur) { n.dispatch(event) })
+	case "input":
+		remove = parent.OnInput(func(event *core.EventInput) { n.dispatch(event) })
 	case "submit":
 		remove = parent.OnSubmit(func(event *core.EventSubmit) { n.dispatch(event) })
 	default:

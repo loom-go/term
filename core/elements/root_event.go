@@ -16,50 +16,45 @@ func (r *RootElement) listenToMouseEvents(ctx context.Context) {
 			return
 
 		case event := <-listenner.Listen(ctx):
-			r.rdrctx.ScheduleUpdate(func() error {
-				offsetX, offsetY := r.rdrctx.RenderOffset()
+			offsetX, offsetY := r.rdrctx.RenderOffset()
 
-				evt := &EventMouse{EventMouse: *event}
+			evt := &EventMouse{EventMouse: *event}
 
-				// normalize coordinate with render offset before using the event
-				evt.Y -= offsetY
-				evt.X -= offsetX
+			// normalize coordinate with render offset before using the event
+			evt.Y -= offsetY
+			evt.X -= offsetX
 
-				target := r.rdrctx.CheckHit(evt.X, evt.Y)
-				if target == nil {
-					target = r
+			target := r.rdrctx.CheckHit(evt.X, evt.Y)
+			if target == nil {
+				target = r
+			}
+
+			r.rdrctx.SetMousePosition(evt.X, evt.Y)
+
+			switch evt.Action {
+			case events.MouseActionPress:
+				r.rdrctx.SetPressedElement(target)
+				r.rdrctx.DispatchEvent(EventTypeMousePress, target, evt)
+
+			case events.MouseActionRelease:
+				r.rdrctx.SetPressedElement(nil)
+				r.rdrctx.DispatchEvent(EventTypeMouseRelease, target, evt)
+
+			case events.MouseActionMove:
+				r.updateHover(target, evt)
+				r.rdrctx.DispatchEvent(EventTypeMouseMove, target, evt)
+
+			case events.MouseActionScroll:
+				r.rdrctx.DispatchEvent(EventTypeMouseScroll, target, evt)
+
+			case events.MouseActionDrag:
+				pressed := r.rdrctx.PressedElement()
+				if pressed != nil {
+					r.rdrctx.DispatchEvent(EventTypeMouseDrag, pressed, evt)
+				} else {
+					r.rdrctx.DispatchEvent(EventTypeMouseDrag, target, evt)
 				}
-
-				evt.setTarget(target)
-				r.rdrctx.SetMousePosition(evt.X, evt.Y)
-
-				switch evt.Action {
-				case events.MouseActionPress:
-					r.rdrctx.SetPressedElement(target)
-					r.rdrctx.DispatchEvent(EventTypeMousePress, target, evt)
-
-				case events.MouseActionRelease:
-					r.rdrctx.SetPressedElement(nil)
-					r.rdrctx.DispatchEvent(EventTypeMouseRelease, target, evt)
-
-				case events.MouseActionMove:
-					r.updateHover(target, evt)
-					r.rdrctx.DispatchEvent(EventTypeMouseMove, target, evt)
-
-				case events.MouseActionScroll:
-					r.rdrctx.DispatchEvent(EventTypeMouseScroll, target, evt)
-
-				case events.MouseActionDrag:
-					pressed := r.rdrctx.PressedElement()
-					if pressed != nil {
-						r.rdrctx.DispatchEvent(EventTypeMouseDrag, pressed, evt)
-					} else {
-						r.rdrctx.DispatchEvent(EventTypeMouseDrag, target, evt)
-					}
-				}
-
-				return nil
-			})
+			}
 		}
 	}
 }
@@ -75,24 +70,19 @@ func (r *RootElement) listenToKeyboardEvents(ctx context.Context) {
 				return
 
 			case event := <-listener.ListenKey(ctx):
-				r.rdrctx.ScheduleUpdate(func() error {
-					focused := r.rdrctx.FocusedElement()
-					if focused == nil {
-						focused = r
-					}
+				focused := r.rdrctx.FocusedElement()
+				if focused == nil {
+					focused = r
+				}
 
-					evt := &EventKey{EventKey: *event}
-					evt.setTarget(focused)
+				evt := &EventKey{EventKey: *event}
 
-					switch event.Action {
-					case events.KeyActionPress:
-						r.rdrctx.DispatchEvent(EventTypeKeyPress, focused, evt)
-					case events.KeyActionRelease:
-						r.rdrctx.DispatchEvent(EventTypeKeyRelease, focused, evt)
-					}
-
-					return nil
-				})
+				switch event.Action {
+				case events.KeyActionPress:
+					r.rdrctx.DispatchEvent(EventTypeKeyPress, focused, evt)
+				case events.KeyActionRelease:
+					r.rdrctx.DispatchEvent(EventTypeKeyRelease, focused, evt)
+				}
 			}
 		}
 	}()
@@ -105,19 +95,14 @@ func (r *RootElement) listenToKeyboardEvents(ctx context.Context) {
 				return
 
 			case event := <-listener.ListenPaste(ctx):
-				r.rdrctx.ScheduleUpdate(func() error {
-					focused := r.rdrctx.FocusedElement()
-					if focused == nil {
-						focused = r
-					}
+				focused := r.rdrctx.FocusedElement()
+				if focused == nil {
+					focused = r
+				}
 
-					evt := &EventPaste{EventPaste: *event}
-					evt.setTarget(focused)
+				evt := &EventPaste{EventPaste: *event}
 
-					r.rdrctx.DispatchEvent(EventTypePaste, focused, evt)
-
-					return nil
-				})
+				r.rdrctx.DispatchEvent(EventTypePaste, focused, evt)
 			}
 		}
 	}()
@@ -132,12 +117,13 @@ func (r *RootElement) listenToResizeEvents(ctx context.Context) {
 			return
 
 		case event := <-listenner.Listen(ctx):
-			r.SetWidth(event.Width)
-			if r.rdrctx.RenderType() == RenderTypeFullscreen {
-				r.SetHeight(event.Height)
-			}
+			r.rdrctx.Batch(func() {
+				r.SetWidth(event.Width)
 
-			r.rdrctx.ScheduleRender()
+				if r.rdrctx.RenderType() == RenderTypeFullscreen {
+					r.SetHeight(event.Height)
+				}
+			})
 		}
 	}
 }

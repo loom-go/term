@@ -3,6 +3,8 @@ package animate
 import (
 	"context"
 	"time"
+
+	"github.com/AnatoleLucet/loom/components"
 )
 
 // todo: easing and infinite p0..p1..p0..p1.. (currently infinite is just locked at p0)
@@ -21,10 +23,13 @@ func (a A) Run() {
 
 // Run executes the given animation A and blocks until it is complete.
 func Run(a A) {
-	var pacer *Pacer
-	if a.Pacer != nil {
-		pacer = a.Pacer
-	} else {
+	ctx := a.Context
+	if ctx == nil {
+		ctx = components.Self().Context()
+	}
+
+	pacer := a.Pacer
+	if pacer == nil {
 		pacer = globalPacer
 	}
 
@@ -33,7 +38,7 @@ func Run(a A) {
 
 	for {
 		select {
-		case <-a.Context.Done():
+		case <-ctx.Done():
 			return
 		default:
 		}

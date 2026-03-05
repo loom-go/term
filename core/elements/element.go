@@ -1,8 +1,10 @@
 package elements
 
 import (
-	"github.com/AnatoleLucet/loom-term/core/gfx"
+	"context"
 	"iter"
+
+	"github.com/AnatoleLucet/loom-term/core/gfx"
 
 	"github.com/AnatoleLucet/tess"
 )
@@ -22,8 +24,11 @@ type Element interface {
 type ElementTree interface {
 	lock()
 	unlock()
-	setContextUnsafe(*RenderContext)
-	flushPendingUpdates() error
+	context() context.Context
+	addPendingUpdate(func() error)
+
+	RenderContext() *RenderContext
+	SetRenderContext(*RenderContext)
 
 	ID() uint32
 
@@ -50,7 +55,7 @@ type ElementStyle interface {
 
 	SetZIndex(zIndex int)
 	UnsetZIndex()
-	updateZIndexUnsafe(child Element, oldz, newz int) error
+	updateZIndex(child Element, oldz, newz int) error
 
 	// 10 | "100pt" | "50%" | "auto" | "max-content" | "fit-content" | "stretch"
 	SetWidth(width any)
@@ -201,6 +206,7 @@ type ElementEvent interface {
 	Blur()
 	OnBlur(func(*EventBlur), ...EventOptions) (remove func())
 
+	OnInput(func(*EventInput), ...EventOptions) (remove func())
 	OnSubmit(func(*EventSubmit), ...EventOptions) (remove func())
 
 	OnDestroy(func()) (remove func())

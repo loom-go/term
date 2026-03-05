@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/AnatoleLucet/loom"
+	appctx "github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/internal/app"
 	"github.com/AnatoleLucet/loom/signals"
 )
 
@@ -15,6 +15,19 @@ type RenderType = core.RenderType
 
 const RenderInline RenderType = core.RenderInline
 const RenderFullscreen RenderType = core.RenderFullscreen
+
+type AppContext = appctx.Context
+
+func Context() *AppContext {
+	ctx, err := appctx.Get()
+	if err != nil {
+		// Context should only be used in a reactive scope.
+		// If it's not, we have good reasons to *panic*
+		panic(fmt.Errorf("term.Context: %w", err))
+	}
+
+	return ctx
+}
 
 type App struct {
 	mu sync.Mutex
@@ -78,7 +91,7 @@ func (a *App) Run(typ RenderType, fn func() loom.Node) <-chan any {
 }
 
 func (a *App) render(fn func() loom.Node) error {
-	appctx := app.NewAppContext(a.ctx, a.rdr)
+	appctx := appctx.New(a.ctx, a.rdr)
 
 	root, err := newRootNode(a.ctx, appctx, fn)
 	if err != nil {

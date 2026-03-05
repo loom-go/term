@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/AnatoleLucet/loom"
+	appctx "github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/internal/app"
 	. "github.com/AnatoleLucet/loom/components"
 )
 
@@ -89,18 +89,6 @@ func Strikethrough(children ...loom.Node) loom.Node {
 	return S(children...)
 }
 
-func Br() loom.Node {
-	return &textNode{
-		name: "Br",
-		modifier: func(parent core.Element, self core.TextElement) {
-			_, ok := parent.(core.TextElement)
-			if ok {
-				self.SetText("\n")
-			}
-		},
-	}
-}
-
 type textNode struct {
 	name     string
 	content  string
@@ -113,60 +101,56 @@ func (n *textNode) ID() string {
 }
 
 func (n *textNode) Mount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("P: %w", err)
+		return fmt.Errorf("%s: %w", n.name, err)
 	}
-
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
 
 	parent := slot.Parent().(core.Element)
 	self, err := core.NewTextElement()
 	if err != nil {
-		return fmt.Errorf("P: %w", err)
+		return fmt.Errorf("%s: %w", n.name, err)
 	}
 	slot.SetSelf(self)
 
-	if n.modifier != nil {
-		n.modifier(parent, self)
-	}
+	return ctx.BatchRender(func() error {
+		if n.modifier != nil {
+			n.modifier(parent, self)
+		}
 
-	parent.AppendChild(self)
-	ctx.RequestRender()
+		parent.AppendChild(self)
 
-	return n.Update(slot)
+		return n.Update(slot)
+	})
 }
 
 func (n *textNode) Update(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("P: %w", err)
+		return fmt.Errorf("%s: %w", n.name, err)
 	}
-
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
 
 	self := slot.Self().(core.TextElement)
-	if n.content != "" {
-		self.SetText(n.content)
-	}
 
-	return slot.RenderChildren(n.children...)
+	return ctx.BatchRender(func() error {
+		if n.content != "" {
+			self.SetText(n.content)
+		}
+
+		return slot.RenderChildren(n.children...)
+	})
 }
 
 func (n *textNode) Unmount(slot *loom.Slot) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
-		return fmt.Errorf("P: %w", err)
+		return fmt.Errorf("%s: %w", n.name, err)
 	}
 
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
+	self := slot.Self().(core.TextElement)
 
-	self := slot.Self().(core.Element)
-
-	self.Destroy()
-	ctx.RequestRender()
-	return nil
+	return ctx.BatchRender(func() error {
+		self.Destroy()
+		return nil
+	})
 }

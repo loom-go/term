@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 
 	"github.com/AnatoleLucet/loom"
+	appctx "github.com/AnatoleLucet/loom-term/components/context"
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom-term/internal/app"
 	"github.com/AnatoleLucet/loom/signals"
 )
 
@@ -58,29 +58,28 @@ func (s *applyNode) Update(slot *loom.Slot) error {
 }
 
 func (s *applyNode) Unmount(slot *loom.Slot) error {
-	self := slot.Self().(*styleLayer)
-	parent := slot.Parent().(core.Element)
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
+	self := slot.Self().(*styleLayer)
+	parent := slot.Parent().(core.Element)
 
-	// remove our layer from the stack
-	stack := getStyleStack(parent)
-	stack.Pop(self.id)
+	return ctx.BatchRender(func() error {
+		// remove our layer from the stack
+		stack := getStyleStack(parent)
+		stack.Pop(self.id)
 
-	// unset our layer styles
-	self.visible = false
-	s.applyStyleLayer(parent, self)
+		// unset our layer styles
+		self.visible = false
+		s.applyStyleLayer(parent, self)
 
-	// reapply the properties that we might have unset
-	s.applyStyleStack(slot)
+		// reapply the properties that we might have unset
+		s.applyStyleStack(slot)
 
-	ctx.RequestRender()
-	return nil
+		return nil
+	})
 }
 
 func (s *applyNode) applyStyleStack(slot *loom.Slot) {
@@ -114,16 +113,13 @@ func (s *applyNode) applyStyleLayer(parent core.Element, layer *styleLayer) bool
 }
 
 func (s *applyNode) run(slot *loom.Slot, initial bool) error {
-	ctx, err := app.GetContext()
+	ctx, err := appctx.Get()
 	if err != nil {
 		return fmt.Errorf("Apply (style): %w", err)
 	}
 
-	ctx.PushRenderHold()
-	defer ctx.PopRenderHold()
-
 	if s.event == "" {
-		s.watch(slot, initial, ctx.RequestRender)
+		s.watch(slot, ctx, initial)
 	} else {
 		s.registerEvents(slot, ctx, initial)
 	}
@@ -131,47 +127,55 @@ func (s *applyNode) run(slot *loom.Slot, initial bool) error {
 	return nil
 }
 
-func (s *applyNode) watch(slot *loom.Slot, initial bool, render func()) {
+func (s *applyNode) watch(slot *loom.Slot, ctx *appctx.Context, initial bool) {
 	self := slot.Self().(*styleLayer)
 	parent := slot.Parent().(core.Element)
 
 	stack := getStyleStack(parent)
 
 	signals.RenderEffect(func() {
-		if initial {
-			// if we're in the initial phase, we can just apply our own layer
-			stack.Push(self)
-			s.applyStyleLayer(parent, self)
-		} else {
-			// else we must update our layer (re-prioritizing it) then reapply the whole stack
-			// to make sure removed properties in the new layer gets proper fallback
-			stack.Replace(self.id, s.styles)
-			s.applyStyleStack(slot)
-		}
+		ctx.BatchRender(func() error {
+			// fmt.Printf("applying style layer %d (visible: %t)\n\r", self.id, self.visible)
+			if initial {
+				// if we're in the initial phase, we can just apply our own layer
+				stack.Push(self)
+				s.applyStyleLayer(parent, self)
+			} else {
+				// else we must update our layer (re-prioritizing it) then reapply the whole stack
+				// to make sure removed properties in the new layer gets proper fallback
+				stack.Replace(self.id, s.styles)
+				s.applyStyleStack(slot)
+			}
+			// fmt.Printf("applied style layer %d (visible: %t)\n\r", self.id, self.visible)
 
-		render()
+			return nil
+		})
 	})
 }
 
-func (s *applyNode) registerEvents(slot *loom.Slot, ctx *app.AppContext, initial bool) {
+func (s *applyNode) registerEvents(slot *loom.Slot, ctx *appctx.Context, initial bool) {
 	// use a custom owner to dispose the RenderEffect in watch() when the event is removed.
 	owner := signals.NewOwner()
 
 	self := slot.Self().(*styleLayer)
 	parent := slot.Parent().(core.Element)
 
+	// todo: have visible be a signal, and always start a watch.
+	// on event, just set visible to true or false, and the watch will react.
 	add := func() {
 		owner.Run(func() error {
 			self.visible = true
-			s.watch(slot, initial, ctx.ScheduleRender)
+			s.watch(slot, ctx, initial)
 			return nil
 		})
 	}
 	remove := func() {
-		self.visible = false
-		owner.Dispose()
-		s.applyStyleStack(slot)
-		ctx.ScheduleRender()
+		ctx.BatchRender(func() error {
+			self.visible = false
+			owner.Dispose()
+			s.applyStyleStack(slot)
+			return nil
+		})
 	}
 
 	if s.event == "hover" {
