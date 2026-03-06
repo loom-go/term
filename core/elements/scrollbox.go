@@ -52,11 +52,9 @@ func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
 	if err != nil {
 		return nil, err
 	}
-	container.SetMinWidth("100%")
-	container.SetMinHeight("100%")
 	container.SetAlignSelf("start")
 	container.SetFlexShrink("0")
-	container.SetFlexGrow("0")
+	container.SetFlexGrow("1")
 	box.AppendChild(container)
 
 	// use an inner content element to prevent https://github.com/facebook/yoga/issues/872 (via tess)
@@ -64,6 +62,7 @@ func NewScrollBoxElement() (scrollb *ScrollBoxElement, err error) {
 	if err != nil {
 		return nil, err
 	}
+	content.SetFlexGrow("1")
 	container.AppendChild(content)
 
 	scrollb = &ScrollBoxElement{

@@ -1,16 +1,15 @@
 package appctx
 
 import (
-	"context"
-
 	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom/signals"
+	components "github.com/AnatoleLucet/loom/components"
 )
 
-var AppContext = signals.NewContext[*Context](nil)
+var _, appContext = components.NewContext[*Context](nil)
+var Provider = appContext.Provider
 
 func Get() (*Context, error) {
-	ctx := AppContext.Value()
+	ctx := appContext.Get()
 	if ctx == nil {
 		return nil, ErrAppNotInitialized
 	}
@@ -22,7 +21,7 @@ type Context struct {
 	rdr *core.Renderer
 }
 
-func New(ctx context.Context, rdr *core.Renderer) *Context {
+func New(rdr *core.Renderer) *Context {
 	return &Context{rdr: rdr}
 }
 

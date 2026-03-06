@@ -10,6 +10,7 @@ import (
 	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term"
 	. "github.com/AnatoleLucet/loom-term/components"
+	. "github.com/AnatoleLucet/loom/components"
 )
 
 var (
@@ -99,23 +100,19 @@ func Actions() loom.Node {
 		Box(
 			Box(
 				Text("DEBUG", Apply(styleBtnText)),
-				On("click", logDebug),
-				Apply(styleBtn, styleDebug),
+				Apply(On{Click: logDebug}, styleBtn, styleDebug),
 			),
 			Box(
 				Text("INFO", Apply(styleBtnText)),
-				On("click", logInfo),
-				Apply(styleBtn, StyleInfo),
+				Apply(On{Click: logInfo}, styleBtn, StyleInfo),
 			),
 			Box(
 				Text("WARN", Apply(styleBtnText)),
-				On("click", logWarn),
-				Apply(styleBtn, styleWarn),
+				Apply(On{Click: logWarn}, styleBtn, styleWarn),
 			),
 			Box(
 				Text("ERROR", Apply(styleBtnText)),
-				On("click", logError),
-				Apply(styleBtn, styleError),
+				Apply(On{Click: logError}, styleBtn, styleError),
 			),
 
 			Apply(styleActions),

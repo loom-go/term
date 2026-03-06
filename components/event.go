@@ -3,98 +3,99 @@ package components
 import (
 	"fmt"
 
-	"github.com/AnatoleLucet/loom"
 	"github.com/AnatoleLucet/loom-term/core"
 )
 
 // On registers a callback for a specific event.
-//
-// Supported events:
-//
-//	"hover", "click", "mouseenter", "mouseleave" "mousepress", "mouserelease", "mousemove"
-//	"scroll", "drag", "keypress", "keyrelease", "paste", "focus", "blur", "submit".
-func On[T any](event string, fn func(T)) loom.Node {
-	return &eventNode[T]{
-		event: event,
-		fn:    fn,
-	}
+type On struct {
+	Hover        func(*core.EventMouse)
+	Click        func(*core.EventMouse)
+	MouseEnter   func(*core.EventMouse)
+	MouseLeave   func(*core.EventMouse)
+	MousePress   func(*core.EventMouse)
+	MouseRelease func(*core.EventMouse)
+	MouseMove    func(*core.EventMouse)
+	MouseScroll  func(*core.EventMouse)
+	MouseDrag    func(*core.EventMouse)
+
+	KeyPress   func(*core.EventKey)
+	KeyRelease func(*core.EventKey)
+	Paste      func(*core.EventPaste)
+
+	Focus func(*core.EventFocus)
+	Blur  func(*core.EventBlur)
+
+	Input  func(*core.EventInput)
+	Submit func(*core.EventSubmit)
 }
 
-type eventNode[T any] struct {
-	event string
-	fn    func(T)
-}
-
-func (n *eventNode[T]) ID() string {
-	return "term.On"
-}
-
-func (n *eventNode[T]) Mount(slot *loom.Slot) error {
-	return n.Update(slot)
-}
-
-func (n *eventNode[T]) Update(slot *loom.Slot) error {
-	n.removeListener(slot)
-
-	parent := slot.Parent().(core.Element)
-
-	var remove func()
-	switch n.event {
-	case "mousemove":
-		remove = parent.OnMouseMove(func(event *core.EventMouse) { n.dispatch(event) })
-	case "mouseenter", "hover":
-		remove = parent.OnMouseEnter(func(event *core.EventMouse) { n.dispatch(event) })
-	case "mouseleave":
-		remove = parent.OnMouseLeave(func(event *core.EventMouse) { n.dispatch(event) })
-	case "mousepress", "click":
-		remove = parent.OnMousePress(func(event *core.EventMouse) { n.dispatch(event) })
-	case "mouserelease":
-		remove = parent.OnMouseRelease(func(event *core.EventMouse) { n.dispatch(event) })
-	case "scroll":
-		remove = parent.OnMouseScroll(func(event *core.EventMouse) { n.dispatch(event) })
-	case "drag":
-		remove = parent.OnMouseDrag(func(event *core.EventMouse) { n.dispatch(event) })
-	case "keypress":
-		remove = parent.OnKeyPress(func(event *core.EventKey) { n.dispatch(event) })
-	case "keyrelease":
-		remove = parent.OnKeyRelease(func(event *core.EventKey) { n.dispatch(event) })
-	case "paste":
-		remove = parent.OnPaste(func(event *core.EventPaste) { n.dispatch(event) })
-	case "focus":
-		remove = parent.OnFocus(func(event *core.EventFocus) { n.dispatch(event) })
-	case "blur":
-		remove = parent.OnBlur(func(event *core.EventBlur) { n.dispatch(event) })
-	case "input":
-		remove = parent.OnInput(func(event *core.EventInput) { n.dispatch(event) })
-	case "submit":
-		remove = parent.OnSubmit(func(event *core.EventSubmit) { n.dispatch(event) })
-	default:
-		return fmt.Errorf("On: unsupported event type %q", n.event)
+func (n On) Apply(parent any) (func() error, error) {
+	elem, ok := parent.(core.Element)
+	if !ok {
+		return nil, fmt.Errorf("On: parent node is not an Element")
 	}
 
-	slot.SetSelf(remove)
+	var removers []func()
 
-	return nil
-}
-
-func (n *eventNode[T]) Unmount(slot *loom.Slot) error {
-	n.removeListener(slot)
-	return nil
-}
-
-func (n *eventNode[T]) dispatch(event any) {
-	if ect, ok := event.(T); ok {
-		n.fn(ect)
-	} else {
-		// todo: pipe the ctx error chan instead
-		core.LogErrorf("On: expected event callback with type %T, got %T.", event, *(new(T)))
+	if n.Click != nil {
+		removers = append(removers, elem.OnMousePress(n.Click))
 	}
-}
-
-func (n *eventNode[T]) removeListener(slot *loom.Slot) {
-	remove := slot.Self()
-	if remove != nil {
-		remove.(func())()
-		slot.SetSelf(nil)
+	if n.Hover != nil {
+		removers = append(removers, elem.OnMouseEnter(n.Hover))
 	}
+	if n.MouseEnter != nil {
+		removers = append(removers, elem.OnMouseEnter(n.MouseEnter))
+	}
+	if n.MouseLeave != nil {
+		removers = append(removers, elem.OnMouseLeave(n.MouseLeave))
+	}
+	if n.MousePress != nil {
+		removers = append(removers, elem.OnMousePress(n.MousePress))
+	}
+	if n.MouseRelease != nil {
+		removers = append(removers, elem.OnMouseRelease(n.MouseRelease))
+	}
+	if n.MouseMove != nil {
+		removers = append(removers, elem.OnMouseMove(n.MouseMove))
+	}
+	if n.MouseScroll != nil {
+		removers = append(removers, elem.OnMouseScroll(n.MouseScroll))
+	}
+	if n.MouseDrag != nil {
+		removers = append(removers, elem.OnMouseDrag(n.MouseDrag))
+	}
+
+	if n.KeyPress != nil {
+		removers = append(removers, elem.OnKeyPress(n.KeyPress))
+	}
+	if n.KeyRelease != nil {
+		removers = append(removers, elem.OnKeyRelease(n.KeyRelease))
+	}
+	if n.Paste != nil {
+		removers = append(removers, elem.OnPaste(n.Paste))
+	}
+
+	if n.Focus != nil {
+		removers = append(removers, elem.OnFocus(n.Focus))
+	}
+	if n.Blur != nil {
+		removers = append(removers, elem.OnBlur(n.Blur))
+	}
+
+	if n.Input != nil {
+		removers = append(removers, elem.OnInput(n.Input))
+	}
+	if n.Submit != nil {
+		removers = append(removers, elem.OnSubmit(n.Submit))
+	}
+
+	remove := func() error {
+		for _, r := range removers {
+			r()
+		}
+
+		return nil
+	}
+
+	return remove, nil
 }

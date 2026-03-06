@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"sync"
 )
 
@@ -30,6 +31,7 @@ type SchedulerOptions struct {
 type Scheduler struct {
 	accessMu sync.RWMutex
 	queueMu  sync.Mutex
+	cond     *sync.Cond
 	ctx      context.Context
 	errors   chan error
 
@@ -39,16 +41,20 @@ type Scheduler struct {
 	queue []*update
 
 	flushing   bool
+	settled    bool
 	batchDepth int
 }
 
 func NewScheduler(opts SchedulerOptions) *Scheduler {
-	return &Scheduler{
+	s := &Scheduler{
 		ctx:        opts.Context,
 		errors:     opts.Errors,
 		render:     opts.Render,
 		postRender: opts.PostRender,
 	}
+	s.cond = sync.NewCond(&s.queueMu)
+
+	return s
 }
 
 func (s *Scheduler) Access(fn func()) {
@@ -58,13 +64,17 @@ func (s *Scheduler) Access(fn func()) {
 }
 
 func (s *Scheduler) Update(fn func() error) {
-	s.enqueue(fn)
-	s.Flush()
+	_, ok := s.enqueue(fn)
+	if ok {
+		s.Flush()
+	}
 }
 
 func (s *Scheduler) UpdateSync(fn func() error) {
-	done := s.enqueue(fn)
-	s.Flush()
+	done, ok := s.enqueue(fn)
+	if ok {
+		s.Flush()
+	}
 	<-done
 }
 
@@ -103,14 +113,36 @@ func (s *Scheduler) Flush() {
 	go s.flush()
 }
 
-func (s *Scheduler) enqueue(fn func() error) chan struct{} {
+func (s *Scheduler) Wait() {
+	s.queueMu.Lock()
+	for s.flushing || len(s.queue) > 0 {
+		s.cond.Wait()
+	}
+	s.queueMu.Unlock()
+}
+
+func (s *Scheduler) Settle() {
+	s.queueMu.Lock()
+	for s.flushing || len(s.queue) > 0 {
+		s.cond.Wait()
+	}
+	s.settled = true
+	s.queueMu.Unlock()
+}
+
+func (s *Scheduler) enqueue(fn func() error) (chan struct{}, bool) {
 	u := &update{fn: fn, done: make(chan struct{}, 1)}
 
 	s.queueMu.Lock()
-	s.queue = append(s.queue, u)
-	s.queueMu.Unlock()
+	defer s.queueMu.Unlock()
 
-	return u.done
+	if s.settled {
+		close(u.done)
+		return u.done, false
+	}
+
+	s.queue = append(s.queue, u)
+	return u.done, true
 }
 
 func (s *Scheduler) flush() {
@@ -118,6 +150,7 @@ func (s *Scheduler) flush() {
 		s.queueMu.Lock()
 		s.flushing = false
 		queue := s.queue
+		s.cond.Broadcast() // broadcast a finished flush
 		s.queueMu.Unlock()
 
 		s.accessMu.Unlock()
@@ -171,7 +204,7 @@ func (s *Scheduler) drain(queue []*update) {
 func (s *Scheduler) run(u *update) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.emitError(fmt.Errorf("%w: %v", ErrPanicDuringUpdate, r))
+			s.emitError(fmt.Errorf("%w: %v:\n%s", ErrPanicDuringUpdate, r, debug.Stack()))
 		}
 
 		u.done <- struct{}{}

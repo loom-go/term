@@ -61,7 +61,7 @@ func NewBaseElementEvent(ctx context.Context, base *BaseElement) (*BaseElementEv
 }
 
 func (e *BaseElementEvent) OnMousePress(handler func(*EventMouse), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -69,7 +69,7 @@ func (e *BaseElementEvent) OnMousePress(handler func(*EventMouse), options ...Ev
 }
 
 func (e *BaseElementEvent) mousePressAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -77,7 +77,7 @@ func (e *BaseElementEvent) mousePressAction(handler func(*EventMouse)) (remove f
 }
 
 func (e *BaseElementEvent) OnMouseRelease(handler func(*EventMouse), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -85,7 +85,7 @@ func (e *BaseElementEvent) OnMouseRelease(handler func(*EventMouse), options ...
 }
 
 func (e *BaseElementEvent) mouseReleaseAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -93,7 +93,7 @@ func (e *BaseElementEvent) mouseReleaseAction(handler func(*EventMouse)) (remove
 }
 
 func (e *BaseElementEvent) OnMouseEnter(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -101,7 +101,7 @@ func (e *BaseElementEvent) OnMouseEnter(handler func(*EventMouse)) (remove func(
 }
 
 func (e *BaseElementEvent) mouseEnterAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -109,7 +109,7 @@ func (e *BaseElementEvent) mouseEnterAction(handler func(*EventMouse)) (remove f
 }
 
 func (e *BaseElementEvent) OnMouseLeave(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -117,7 +117,7 @@ func (e *BaseElementEvent) OnMouseLeave(handler func(*EventMouse)) (remove func(
 }
 
 func (e *BaseElementEvent) mouseLeaveAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -125,7 +125,7 @@ func (e *BaseElementEvent) mouseLeaveAction(handler func(*EventMouse)) (remove f
 }
 
 func (e *BaseElementEvent) OnMouseMove(handler func(*EventMouse), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -133,7 +133,7 @@ func (e *BaseElementEvent) OnMouseMove(handler func(*EventMouse), options ...Eve
 }
 
 func (e *BaseElementEvent) mouseMoveAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -141,7 +141,7 @@ func (e *BaseElementEvent) mouseMoveAction(handler func(*EventMouse)) (remove fu
 }
 
 func (e *BaseElementEvent) OnMouseScroll(handler func(*EventMouse), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -149,7 +149,7 @@ func (e *BaseElementEvent) OnMouseScroll(handler func(*EventMouse), options ...E
 }
 
 func (e *BaseElementEvent) mouseScrollAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -157,7 +157,7 @@ func (e *BaseElementEvent) mouseScrollAction(handler func(*EventMouse)) (remove 
 }
 
 func (e *BaseElementEvent) OnMouseDrag(handler func(*EventMouse), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -165,7 +165,7 @@ func (e *BaseElementEvent) OnMouseDrag(handler func(*EventMouse), options ...Eve
 }
 
 func (e *BaseElementEvent) mouseDragAction(handler func(*EventMouse)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -173,7 +173,7 @@ func (e *BaseElementEvent) mouseDragAction(handler func(*EventMouse)) (remove fu
 }
 
 func (e *BaseElementEvent) OnKeyPress(handler func(*EventKey), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -181,7 +181,7 @@ func (e *BaseElementEvent) OnKeyPress(handler func(*EventKey), options ...EventO
 }
 
 func (e *BaseElementEvent) keyPressAction(handler func(*EventKey)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -189,7 +189,7 @@ func (e *BaseElementEvent) keyPressAction(handler func(*EventKey)) (remove func(
 }
 
 func (e *BaseElementEvent) OnKeyRelease(handler func(*EventKey), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -197,7 +197,7 @@ func (e *BaseElementEvent) OnKeyRelease(handler func(*EventKey), options ...Even
 }
 
 func (e *BaseElementEvent) keyReleaseAction(handler func(*EventKey)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -205,7 +205,7 @@ func (e *BaseElementEvent) keyReleaseAction(handler func(*EventKey)) (remove fun
 }
 
 func (e *BaseElementEvent) OnPaste(handler func(*EventPaste), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -213,7 +213,7 @@ func (e *BaseElementEvent) OnPaste(handler func(*EventPaste), options ...EventOp
 }
 
 func (e *BaseElementEvent) pasteAction(handler func(*EventPaste)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -221,7 +221,7 @@ func (e *BaseElementEvent) pasteAction(handler func(*EventPaste)) (remove func()
 }
 
 func (e *BaseElementEvent) OnFocus(handler func(*EventFocus), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -229,7 +229,7 @@ func (e *BaseElementEvent) OnFocus(handler func(*EventFocus), options ...EventOp
 }
 
 func (e *BaseElementEvent) focusAction(handler func(*EventFocus)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -237,7 +237,7 @@ func (e *BaseElementEvent) focusAction(handler func(*EventFocus)) (remove func()
 }
 
 func (e *BaseElementEvent) OnBlur(handler func(*EventBlur), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -245,7 +245,7 @@ func (e *BaseElementEvent) OnBlur(handler func(*EventBlur), options ...EventOpti
 }
 
 func (e *BaseElementEvent) blurAction(handler func(*EventBlur)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -253,7 +253,7 @@ func (e *BaseElementEvent) blurAction(handler func(*EventBlur)) (remove func()) 
 }
 
 func (e *BaseElementEvent) OnInput(handler func(*EventInput), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -261,7 +261,7 @@ func (e *BaseElementEvent) OnInput(handler func(*EventInput), options ...EventOp
 }
 
 func (e *BaseElementEvent) inputAction(handler func(*EventInput)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -269,7 +269,7 @@ func (e *BaseElementEvent) inputAction(handler func(*EventInput)) (remove func()
 }
 
 func (e *BaseElementEvent) OnSubmit(handler func(*EventSubmit), options ...EventOptions) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -277,7 +277,7 @@ func (e *BaseElementEvent) OnSubmit(handler func(*EventSubmit), options ...Event
 }
 
 func (e *BaseElementEvent) submitAction(handler func(*EventSubmit)) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -285,7 +285,7 @@ func (e *BaseElementEvent) submitAction(handler func(*EventSubmit)) (remove func
 }
 
 func (e *BaseElementEvent) OnDestroy(handler func()) (remove func()) {
-	if err := guardDestroyed(e.ctx); err != nil {
+	if err := guardDestroyed(e.base.Self()); err != nil {
 		return func() {}
 	}
 
@@ -295,6 +295,10 @@ func (e *BaseElementEvent) OnDestroy(handler func()) (remove func()) {
 }
 
 func (e *BaseElementEvent) broadcastEvent(typ EventType, event any) {
+	if err := guardDestroyed(e.base.Self()); err != nil {
+		return
+	}
+
 	var phase EventPhase
 	if evt, ok := event.(interface{ Phase() EventPhase }); ok {
 		phase = evt.Phase()

@@ -67,33 +67,61 @@ func (a *App) Run(typ RenderType, fn func() loom.Node) <-chan any {
 
 	if a.running {
 		err = ErrAppAlreadyRunning
-		return a.errors
+		return a.Errors()
 	}
 
 	a.rdr, err = core.NewRenderer(typ)
 	if err != nil {
-		return a.errors
+		return a.Errors()
 	}
 
 	err = a.render(fn)
 	if err != nil {
-		return a.errors
+		return a.Errors()
 	}
 
-	// syncronously destroy the app if the root destroys itself
-	a.rdr.Root().OnDestroy(a.Close)
+	// syncronously cancel the ctx if the renderer closed itself
+	// so the user can handle it with app.Close()
+	a.rdr.OnClose(a.cancel)
 
 	// forward errors from the renderer
 	go forward(a.ctx, a.rdr.Errors(), a.errors)
 
 	a.running = true
-	return a.errors
+	return a.Errors()
+}
+
+func (a *App) Errors() <-chan any {
+	out := make(chan any)
+
+	go func() {
+		defer close(out)
+
+		for {
+			select {
+			case <-a.ctx.Done():
+				return
+			case err, ok := <-a.errors:
+				if !ok {
+					return
+				}
+
+				select {
+				case out <- err:
+				case <-a.ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return out
 }
 
 func (a *App) render(fn func() loom.Node) error {
-	appctx := appctx.New(a.ctx, a.rdr)
+	appctx := appctx.New(a.rdr)
 
-	root, err := newRootNode(a.ctx, appctx, fn)
+	root, err := newRootNode(appctx, fn)
 	if err != nil {
 		return fmt.Errorf("failed to create root node:  %w", err)
 	}
@@ -109,6 +137,10 @@ func (a *App) render(fn func() loom.Node) error {
 	return nil
 }
 
+func (a *App) Stop() {
+	a.Close()
+}
+
 func (a *App) Close() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -122,8 +154,6 @@ func (a *App) Close() {
 }
 
 func (a *App) close() {
-	// make sure to cancel the ctx BEFORE unmounting the tree,
-	// else some goroutine might squeeze in an update/render on the destroyed tree before the ctx is cancelled.
 	a.cancel()
 
 	if a.rdr != nil {

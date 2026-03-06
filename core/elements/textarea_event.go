@@ -7,17 +7,11 @@ import (
 )
 
 func (a *TextAreaElement) dispatchInputEvent(value string) {
-	evt := &EventInput{Value: value}
-	evt.setTarget(a.Self())
-
-	a.rdrctx.DispatchEvent(EventTypeInput, a, evt)
+	a.rdrctx.DispatchEvent(EventTypeInput, a.Self(), &EventInput{Value: value})
 }
 
 func (a *TextAreaElement) Submit() {
-	evt := &EventSubmit{Value: a.Value()}
-	evt.setTarget(a.Self())
-
-	a.rdrctx.DispatchEvent(EventTypeSubmit, a, evt)
+	a.rdrctx.DispatchEvent(EventTypeSubmit, a.Self(), &EventSubmit{Value: a.Value()})
 }
 
 func (a *TextAreaElement) handlePaste(event *EventPaste) {

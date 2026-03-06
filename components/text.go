@@ -9,21 +9,16 @@ import (
 	. "github.com/AnatoleLucet/loom/components"
 )
 
-func Text(content any, styles ...*applyNode) loom.Node {
-	children := make([]loom.Node, len(styles))
-	for i, style := range styles {
-		children[i] = style
-	}
-
+func Text(content any, children ...loom.Node) loom.Node {
 	return &textNode{
 		name:     "Text",
 		content:  fmt.Sprint(content),
 		children: children,
 	}
 }
-func BindText[T any](fn func() T, styles ...*applyNode) loom.Node {
+func BindText[T any](fn func() T, children ...loom.Node) loom.Node {
 	return Bind(func() loom.Node {
-		return Text(fn(), styles...)
+		return Text(fn(), children...)
 	})
 }
 

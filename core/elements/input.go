@@ -29,6 +29,7 @@ func NewInputElement() (input *InputElement, err error) {
 	ta.self = input
 
 	ta.SetHeight(1)
+	ta.SetWidth("100%")
 	ta.SetWrap("none")
 
 	return input, nil

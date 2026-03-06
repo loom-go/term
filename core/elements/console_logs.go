@@ -221,7 +221,7 @@ func newLogsAttachButtonElement() (*logsAttachButtonElement, error) {
 	box.SetBottom(0)
 	box.SetPosition("absolute")
 	box.SetPaddingHorizontal(1)
-	box.SetBackgroundColor(consoleLogsHeaderBG)
+	box.SetBackgroundColor("#000")
 
 	text, err := NewTextElement()
 	if err != nil {

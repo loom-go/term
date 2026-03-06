@@ -21,10 +21,7 @@ func Counter() loom.Node {
 		}
 	}(Self())
 
-	return Box(
-		Text("Count: "),
-		BindText(frame),
-	)
+	return Box(Text("Count: "), BindText(frame))
 }
 
 func main() {

@@ -97,18 +97,20 @@ func App() loom.Node {
 				Apply(styleBoxesList),
 			),
 
-			Ref(&ref),
-			Apply(styleScrollBox),
+			Apply(
+				Ref{Ptr: &ref},
+				styleScrollBox,
+			),
 		),
 
 		Box(
-			Box(Text("LEFT"), On("click", scrollLeft), Apply(btnStyle)),
+			Box(Text("LEFT"), Apply(On{Click: scrollLeft}, btnStyle)),
 			Box(
-				Box(Text("TOP"), On("click", scrollTop), Apply(btnStyle)),
-				Box(Text("BOT"), On("click", scrollBottom), Apply(btnStyle)),
+				Box(Text("TOP"), Apply(On{Click: scrollTop}, btnStyle)),
+				Box(Text("BOT"), Apply(On{Click: scrollBottom}, btnStyle)),
 				Apply(actionsMiddle),
 			),
-			Box(Text("RIGHT"), On("click", scrollRight), Apply(btnStyle)),
+			Box(Text("RIGHT"), Apply(On{Click: scrollRight}, btnStyle)),
 
 			Apply(actionsContainer),
 		),

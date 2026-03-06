@@ -3,6 +3,7 @@ package elements
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/AnatoleLucet/loom-term/core/gfx"
@@ -64,7 +65,7 @@ func NewRenderContext(ctx context.Context, typ RenderType, root *RootElement) (*
 func (rc *RenderContext) render() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%w: %v", ErrPanicDuringRender, r)
+			err = fmt.Errorf("%w: %v:\n%s", ErrPanicDuringRender, r, debug.Stack())
 		}
 	}()
 
@@ -92,12 +93,20 @@ func (rc *RenderContext) Batch(fn func()) {
 	rc.scheduler.Batch(fn)
 }
 
+func (rc *RenderContext) Settle() {
+	rc.scheduler.Settle()
+}
+
 func (rc *RenderContext) scheduleAccess(access func()) {
 	rc.scheduler.Access(access)
 }
 
 func (rc *RenderContext) scheduleUpdate(update func() error) {
 	rc.scheduler.Update(update)
+}
+
+func (rc *RenderContext) scheduleUpdateSync(update func() error) {
+	rc.scheduler.UpdateSync(update)
 }
 
 func (rc *RenderContext) RenderType() RenderType {

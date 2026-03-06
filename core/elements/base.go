@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -418,7 +419,20 @@ func scheduleUpdate(e Element, fn func() error) {
 		e.Self().addPendingUpdate(fn)
 	} else {
 		e.RenderContext().scheduleUpdate(func() error {
-			if err := guardDestroyed(e.context()); err != nil {
+			if err := guardDestroyed(e); err != nil {
+				return err
+			}
+
+			return fn()
+		})
+	}
+}
+func scheduleUpdateSync(e Element, fn func() error) {
+	if e.RenderContext() == nil {
+		e.Self().addPendingUpdate(fn)
+	} else {
+		e.RenderContext().scheduleUpdateSync(func() error {
+			if err := guardDestroyed(e); err != nil {
 				return err
 			}
 
@@ -427,10 +441,12 @@ func scheduleUpdate(e Element, fn func() error) {
 	}
 }
 
-func guardDestroyed(ctx context.Context) error {
+func guardDestroyed(e Element) error {
+	ctx := e.context()
+
 	select {
 	case <-ctx.Done():
-		return ErrUsingDestroyedElement
+		return fmt.Errorf("%T: %w\n%s", e, ErrUsingDestroyedElement, debug.Stack())
 	default:
 		return nil
 	}

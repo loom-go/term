@@ -12,7 +12,7 @@ import (
 )
 
 func (r *RootElement) Render(*opentui.Buffer, gfx.Rect) (err error) {
-	if err := guardDestroyed(r.ctx); err != nil {
+	if err := guardDestroyed(r); err != nil {
 		return fmt.Errorf("Renderer: %w", err)
 	}
 

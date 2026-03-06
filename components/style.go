@@ -3,9 +3,11 @@ package components
 import (
 	"fmt"
 	"math"
+
+	"github.com/AnatoleLucet/loom-term/core"
 )
 
-// Style properties for elements.
+// Style applier for elements.
 // Values can be of various types and units, each field has a comment for each possible value type.
 //
 // For reactive style, properties can be defined as a function that returns the value.
@@ -84,6 +86,23 @@ type Style struct {
 	PlaceholderFontWeight any // "normal" | "bold" | func() any
 	PlaceholderFontStyle  any // "normal" | "italic" | func() any
 	PlaceholderDecoration any // "none" | "underline" | "line-through" | func() any
+}
+
+func (s Style) Apply(parent any) (func() error, error) {
+	elem, ok := parent.(core.Element)
+	if !ok {
+		return nil, fmt.Errorf("Style: parent node is not an Element")
+	}
+
+	removers := applyStyle(elem, s)
+	remove := func() error {
+		for _, r := range removers {
+			r()
+		}
+		return nil
+	}
+
+	return remove, nil
 }
 
 // helper for "<value>pt"

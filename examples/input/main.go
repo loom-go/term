@@ -68,16 +68,15 @@ func InputForm() loom.Node {
 	return Box(
 		B(Text("Input"), Apply(styleTitle)),
 
-		Input(
-			Ref(&ref),
-			Attr("placeholder", "Type something..."),
-			On("submit", onSubmit),
-			Apply(styleInput),
-		),
+		Input(Apply(
+			Ref{Ptr: &ref},
+			Attr{Placeholder: "Type something..."},
+			On{Submit: onSubmit},
+			styleInput,
+		)),
 		Box(
 			Text("SUBMIT"),
-			On("click", submit),
-			Apply(styleBtn),
+			Apply(On{Click: submit}, styleBtn),
 		),
 
 		Show(hasResult, func() loom.Node {
@@ -108,16 +107,15 @@ func TextAreaForm() loom.Node {
 	return Box(
 		B(Text("TextArea"), Apply(styleTitle)),
 
-		TextArea(
-			Ref(&ref),
-			Attr("placeholder", "Type something..."),
-			On("submit", onSubmit),
-			Apply(styleTextArea),
-		),
+		TextArea(Apply(
+			Ref{Ptr: &ref},
+			Attr{Placeholder: "Type something..."},
+			On{Submit: onSubmit},
+			styleTextArea,
+		)),
 		Box(
 			Text("SUBMIT"),
-			On("click", submit),
-			Apply(styleBtn),
+			Apply(On{Click: submit}, styleBtn),
 		),
 
 		Show(hasResult, func() loom.Node {
