@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/loom-go/term/core"
 )
 
 // Style applier for elements.

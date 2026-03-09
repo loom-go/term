@@ -1,6 +1,6 @@
 package core
 
-import "github.com/AnatoleLucet/loom-term/core/debug"
+import "github.com/loom-go/term/core/debug"
 
 func LogDebug(args ...any)                 { debug.LogDebug(args...) }
 func LogDebugf(format string, args ...any) { debug.LogDebugf(format, args...) }

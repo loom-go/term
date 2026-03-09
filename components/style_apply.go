@@ -3,8 +3,8 @@ package components
 import (
 	"reflect"
 
-	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom/signals"
+	"github.com/loom-go/loom/signals"
+	"github.com/loom-go/term/core"
 )
 
 func applyStyle(elem core.Element, style Style) (removers []func()) {

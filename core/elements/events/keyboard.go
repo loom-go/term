@@ -3,8 +3,8 @@ package events
 import (
 	"bytes"
 	"context"
-	"github.com/AnatoleLucet/loom-term/core/stdio"
-	"github.com/AnatoleLucet/loom-term/core/sync"
+	"github.com/loom-go/term/core/stdio"
+	"github.com/loom-go/term/core/sync"
 	"strconv"
 	"strings"
 )

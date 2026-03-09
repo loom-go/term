@@ -3,7 +3,7 @@ package components
 import (
 	"fmt"
 
-	appctx "github.com/AnatoleLucet/loom-term/components/context"
+	"github.com/loom-go/term/components/appctx"
 )
 
 // Attr is an alias for Attribute

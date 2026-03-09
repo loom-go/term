@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	. "github.com/AnatoleLucet/loom/components"
+	. "github.com/loom-go/loom/components"
 )
 
 var todos, TodoListContext = NewContext[*TodoStore](nil)

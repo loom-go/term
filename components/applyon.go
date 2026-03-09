@@ -1,9 +1,9 @@
 package components
 
 import (
-	"github.com/AnatoleLucet/loom"
-	term "github.com/AnatoleLucet/loom-term"
-	. "github.com/AnatoleLucet/loom/components"
+	"github.com/loom-go/loom"
+	. "github.com/loom-go/loom/components"
+	term "github.com/loom-go/term"
 )
 
 // ApplyOn applies the Styles on a specific event ("hover", "focus", "active").

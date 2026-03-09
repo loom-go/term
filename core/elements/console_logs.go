@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/AnatoleLucet/loom-term/core/debug"
-	"github.com/AnatoleLucet/loom-term/core/elements/events"
+	"github.com/loom-go/term/core/debug"
+	"github.com/loom-go/term/core/elements/events"
 )
 
 var (

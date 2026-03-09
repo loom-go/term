@@ -3,10 +3,10 @@ package components
 import (
 	"fmt"
 
-	"github.com/AnatoleLucet/loom"
-	appctx "github.com/AnatoleLucet/loom-term/components/context"
-	"github.com/AnatoleLucet/loom-term/core"
-	. "github.com/AnatoleLucet/loom/components"
+	"github.com/loom-go/loom"
+	. "github.com/loom-go/loom/components"
+	"github.com/loom-go/term/components/appctx"
+	"github.com/loom-go/term/core"
 )
 
 func Text(content any, children ...loom.Node) loom.Node {

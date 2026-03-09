@@ -1,6 +1,6 @@
 package term
 
-import "github.com/AnatoleLucet/loom-term/core"
+import "github.com/loom-go/term/core"
 
 type Element = core.Element
 type TextElement = core.TextElement

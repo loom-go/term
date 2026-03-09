@@ -4,7 +4,7 @@ import (
 	"context"
 	"iter"
 
-	"github.com/AnatoleLucet/loom-term/core/gfx"
+	"github.com/loom-go/term/core/gfx"
 
 	"github.com/AnatoleLucet/tess"
 )

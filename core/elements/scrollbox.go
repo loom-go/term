@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/AnatoleLucet/loom-term/core/elements/events"
-	"github.com/AnatoleLucet/loom-term/core/gfx"
+	"github.com/loom-go/term/core/elements/events"
+	"github.com/loom-go/term/core/gfx"
 )
 
 type scrollAction int

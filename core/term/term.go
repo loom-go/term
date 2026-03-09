@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AnatoleLucet/loom-term/core/stdio"
+	"github.com/loom-go/term/core/stdio"
 
 	"golang.org/x/term"
 )

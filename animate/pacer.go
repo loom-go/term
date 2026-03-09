@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AnatoleLucet/loom/signals"
+	"github.com/loom-go/loom/signals"
 )
 
 const defaultFPS = 60

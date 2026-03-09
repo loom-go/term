@@ -3,7 +3,7 @@ package elements
 import (
 	"fmt"
 
-	"github.com/AnatoleLucet/loom-term/core/gfx"
+	"github.com/loom-go/term/core/gfx"
 
 	"github.com/AnatoleLucet/go-opentui"
 )

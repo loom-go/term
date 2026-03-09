@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/AnatoleLucet/loom-term/core/elements"
-	"github.com/AnatoleLucet/loom-term/core/elements/events"
+	"github.com/loom-go/term/core/elements"
+	"github.com/loom-go/term/core/elements/events"
 )
 
 type Event = elements.Event

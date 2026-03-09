@@ -2,8 +2,8 @@ package events
 
 import (
 	"context"
-	"github.com/AnatoleLucet/loom-term/core/sync"
-	"github.com/AnatoleLucet/loom-term/core/term"
+	"github.com/loom-go/term/core/sync"
+	"github.com/loom-go/term/core/term"
 	"os"
 	"os/signal"
 	"syscall"

@@ -1,6 +1,6 @@
 package core
 
-import "github.com/AnatoleLucet/loom-term/core/term"
+import "github.com/loom-go/term/core/term"
 
 // TerminalSize returns the current size of the terminal (rows, cols).
 // If unable to get the size, it returns (0, 0).

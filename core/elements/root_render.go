@@ -2,9 +2,9 @@ package elements
 
 import (
 	"fmt"
-	"github.com/AnatoleLucet/loom-term/core/debug"
-	"github.com/AnatoleLucet/loom-term/core/gfx"
-	"github.com/AnatoleLucet/loom-term/core/term"
+	"github.com/loom-go/term/core/debug"
+	"github.com/loom-go/term/core/gfx"
+	"github.com/loom-go/term/core/term"
 	"time"
 
 	"github.com/AnatoleLucet/go-opentui"

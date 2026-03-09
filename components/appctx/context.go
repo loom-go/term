@@ -1,8 +1,8 @@
 package appctx
 
 import (
-	"github.com/AnatoleLucet/loom-term/core"
-	components "github.com/AnatoleLucet/loom/components"
+	components "github.com/loom-go/loom/components"
+	"github.com/loom-go/term/core"
 )
 
 var _, appContext = components.NewContext[*Context](nil)

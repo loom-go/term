@@ -1,7 +1,7 @@
 package elements
 
 import (
-	"github.com/AnatoleLucet/loom-term/core/elements/events"
+	"github.com/loom-go/term/core/elements/events"
 	"sync"
 )
 

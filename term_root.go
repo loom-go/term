@@ -1,8 +1,8 @@
 package term
 
 import (
-	"github.com/AnatoleLucet/loom"
-	"github.com/AnatoleLucet/loom-term/components/context"
+	"github.com/loom-go/loom"
+	"github.com/loom-go/term/components/appctx"
 )
 
 type rootNode struct {

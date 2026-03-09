@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/AnatoleLucet/loom"
-	appctx "github.com/AnatoleLucet/loom-term/components/context"
-	"github.com/AnatoleLucet/loom-term/core"
-	"github.com/AnatoleLucet/loom/signals"
+	"github.com/loom-go/loom"
+	"github.com/loom-go/loom/signals"
+	"github.com/loom-go/term/components/appctx"
+	"github.com/loom-go/term/core"
 )
 
 type RenderType = core.RenderType

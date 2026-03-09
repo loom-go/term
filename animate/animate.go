@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/AnatoleLucet/loom/components"
+	"github.com/loom-go/loom/components"
 )
 
 // todo: easing and infinite p0..p1..p0..p1.. (currently infinite is just locked at p0)

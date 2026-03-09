@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/AnatoleLucet/loom-term/core/elements"
+	"github.com/loom-go/term/core/elements"
 )
 
 type RenderType = elements.RenderType

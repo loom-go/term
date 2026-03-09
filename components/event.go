@@ -3,7 +3,7 @@ package components
 import (
 	"fmt"
 
-	"github.com/AnatoleLucet/loom-term/core"
+	"github.com/loom-go/term/core"
 )
 
 // On registers a callback for a specific event.

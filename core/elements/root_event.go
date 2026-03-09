@@ -4,7 +4,7 @@ import (
 	"context"
 	"slices"
 
-	"github.com/AnatoleLucet/loom-term/core/elements/events"
+	"github.com/loom-go/term/core/elements/events"
 )
 
 func (r *RootElement) listenToMouseEvents(ctx context.Context) {

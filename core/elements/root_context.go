@@ -6,8 +6,8 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/AnatoleLucet/loom-term/core/gfx"
-	"github.com/AnatoleLucet/loom-term/core/term"
+	"github.com/loom-go/term/core/gfx"
+	"github.com/loom-go/term/core/term"
 )
 
 type RenderType int

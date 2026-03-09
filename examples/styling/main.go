@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AnatoleLucet/loom"
-	"github.com/AnatoleLucet/loom-term"
-	"github.com/AnatoleLucet/loom-term/animate"
-	. "github.com/AnatoleLucet/loom-term/components"
-	. "github.com/AnatoleLucet/loom/components"
+	"github.com/loom-go/loom"
+	. "github.com/loom-go/loom/components"
+	"github.com/loom-go/term"
+	"github.com/loom-go/term/animate"
+	. "github.com/loom-go/term/components"
 )
 
 var (
