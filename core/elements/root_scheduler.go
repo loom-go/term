@@ -155,9 +155,10 @@ func (s *Scheduler) flush() {
 
 		s.accessMu.Unlock()
 
-		err := s.postRender()
-		if err != nil {
-			s.emitError(err)
+		if s.postRender != nil {
+			if err := s.postRender(); err != nil {
+				s.emitError(err)
+			}
 		}
 
 		// keep going if more updates came in during render
