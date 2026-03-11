@@ -10,9 +10,9 @@ require (
 )
 
 require (
-	github.com/AnatoleLucet/go-opentui v0.0.0-20260303123412-5ad44e1e9b77 // indirect
+	github.com/AnatoleLucet/go-opentui v0.0.0-20260311121128-182cdb92ba16 // indirect
 	github.com/AnatoleLucet/sig v0.0.0-20260308162001-17251018b48a // indirect
-	github.com/AnatoleLucet/tess v0.0.0-20260203151116-72dc74b8dcb6 // indirect
+	github.com/AnatoleLucet/tess v0.0.0-20260310111309-c8343f5a151d // indirect
 	github.com/petermattis/goid v0.0.0-20251121121749-a11dd1a45f9a // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/term v0.38.0 // indirect
