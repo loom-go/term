@@ -1,8 +1,8 @@
 package main
 
 import (
+	"math/rand"
 	"slices"
-	"time"
 
 	. "github.com/loom-go/loom/components"
 )
@@ -10,14 +10,14 @@ import (
 var todos, TodoListContext = NewContext[*TodoStore](nil)
 
 type Todo struct {
-	id    int
+	id    uint32
 	title string
 	done  *Writable[bool]
 }
 
 func NewTodo(title string) Todo {
 	return Todo{
-		id:    time.Now().Nanosecond(),
+		id:    rand.Uint32(),
 		title: title,
 		done:  NewWritable(false),
 	}
@@ -43,13 +43,13 @@ func (t *TodoStore) All() []*Todo {
 	return t.list.Get()
 }
 
-func (t *TodoStore) Add(title string) int {
+func (t *TodoStore) Add(title string) uint32 {
 	todo := NewTodo(title)
 	t.list.Set(append(t.list.Get(), &todo))
 	return todo.id
 }
 
-func (t TodoStore) Toggle(id int) {
+func (t *TodoStore) Toggle(id uint32) {
 	for _, todo := range t.list.Get() {
 		if todo.id == id {
 			todo.Toggle()
@@ -58,7 +58,7 @@ func (t TodoStore) Toggle(id int) {
 	}
 }
 
-func (t TodoStore) Remove(id int) {
+func (t *TodoStore) Remove(id uint32) {
 	t.list.Set(slices.DeleteFunc(t.list.Get(), func(t *Todo) bool {
 		return t.id == id
 	}))

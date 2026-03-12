@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/loom-go/term/core/elements"
+	"github.com/loom-go/term/core/term"
 )
 
 type RenderType = elements.RenderType
@@ -23,6 +24,11 @@ type Renderer struct {
 }
 
 func NewRenderer(typ RenderType) (*Renderer, error) {
+	restore, err := term.Init()
+	if err != nil {
+		return nil, err
+	}
+
 	root, err := elements.NewRootElement(typ)
 	if err != nil {
 		return nil, err
@@ -35,8 +41,11 @@ func NewRenderer(typ RenderType) (*Renderer, error) {
 		return nil, err
 	}
 
-	root.OnDestroy(cancel)
 	root.SetRenderContext(rdrctx)
+	root.OnDestroy(func() {
+		cancel()
+		restore()
+	})
 
 	return &Renderer{root: root, rdrctx: rdrctx, ctx: ctx}, nil
 }

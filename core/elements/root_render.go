@@ -113,15 +113,7 @@ func (r *RootElement) render(force bool) error {
 	return r.rdr.Render(force)
 }
 
-func (r *RootElement) init() error {
-	initialState, err := term.MakeRaw()
-	if err != nil {
-		return err
-	}
-	r.OnDestroy(func() {
-		term.Restore(initialState)
-	})
-
+func (r *RootElement) init() (err error) {
 	if r.rdrctx.RenderType() == RenderTypeFullscreen {
 		err = r.initFullscreen()
 	}

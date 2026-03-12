@@ -14,18 +14,18 @@ type State = term.State
 func MakeRaw() (*State, error) {
 	fd := int(os.Stdin.Fd())
 
-	oldState, err := term.MakeRaw(fd)
+	state, err := term.MakeRaw(fd)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFailedToSetRawMode, err)
 	}
 
-	return oldState, nil
+	return state, nil
 }
 
-func Restore(oldState *State) error {
+func Restore(state *State) error {
 	fd := int(os.Stdin.Fd())
 
-	err := term.Restore(fd, oldState)
+	err := term.Restore(fd, state)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedToRestoreRawMode, err)
 	}
@@ -45,13 +45,13 @@ func Size() (width, height int, err error) {
 }
 
 func CursorPos() (row, col int, err error) {
-	oldState, err := MakeRaw()
+	state, err := MakeRaw()
 	if err != nil {
 		return 0, 0, fmt.Errorf("%w: %w", ErrFailedToGetCursorPosition, err)
 	}
-	defer Restore(oldState)
+	defer Restore(state)
 
-	stdin := stdio.Stdin.Listen(256)
+	stdin := stdio.Stdin().Listen(256)
 
 	// query cursor pos
 	fmt.Print("\x1b[6n")
