@@ -1,5 +1,5 @@
-github.com/AnatoleLucet/go-opentui v0.0.0-20260311121128-182cdb92ba16 h1:hcsaClr9PBqN3TH8O7iX/7u9d2UYwo8UfHN+NgUJqXQ=
-github.com/AnatoleLucet/go-opentui v0.0.0-20260311121128-182cdb92ba16/go.mod h1:JxO6qbrbNsTT3nPTPrnhhQEA1fKnEA8tNCaujsoHyPI=
+github.com/AnatoleLucet/go-opentui v0.0.0-20260311124333-d904eb66f503 h1:6dpUhP49WcIjuQNbbVZa43nA57yFXbDdWlK8rd3m2ww=
+github.com/AnatoleLucet/go-opentui v0.0.0-20260311124333-d904eb66f503/go.mod h1:JxO6qbrbNsTT3nPTPrnhhQEA1fKnEA8tNCaujsoHyPI=
 github.com/AnatoleLucet/sig v0.0.0-20260308162001-17251018b48a h1:B/YZ1KcFTI7Z6t36euajviYqJSinUydX/qwgGBmoEyk=
 github.com/AnatoleLucet/sig v0.0.0-20260308162001-17251018b48a/go.mod h1:R9eHfMPg6gNCgM185K2uPYM8xxQZE4HZq+jw3DoeHQU=
 github.com/AnatoleLucet/tess v0.0.0-20260310111309-c8343f5a151d h1:thS9H0S7/Uo8dOOS/Cp4vdpciAaAJBWlmWnufbYgpeU=

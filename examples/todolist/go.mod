@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/AnatoleLucet/go-opentui v0.0.0-20260311121128-182cdb92ba16 // indirect
+	github.com/AnatoleLucet/go-opentui v0.0.0-20260311124333-d904eb66f503 // indirect
 	github.com/AnatoleLucet/sig v0.0.0-20260308162001-17251018b48a // indirect
 	github.com/AnatoleLucet/tess v0.0.0-20260310111309-c8343f5a151d // indirect
 	github.com/petermattis/goid v0.0.0-20251121121749-a11dd1a45f9a // indirect

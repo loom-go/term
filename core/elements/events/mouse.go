@@ -30,7 +30,7 @@ func (l *MouseListener) Listen(ctx context.Context) <-chan *EventMouse {
 }
 
 func (l *MouseListener) watch() {
-	stdin := stdio.Stdin.Listen(1024)
+	stdin := stdio.Stdin().Listen(1024)
 	events := stdio.NewBufferedConsumer(func(buf []byte) (consumed int, complete bool) {
 		event, consumed := l.parseMouseEvent(buf)
 		if event != nil {

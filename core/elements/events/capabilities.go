@@ -28,7 +28,7 @@ func (l *CapabilitiesListener) Listen(ctx context.Context) <-chan *EventCapabili
 }
 
 func (l *CapabilitiesListener) watch() {
-	stdin := stdio.Stdin.Listen(1024)
+	stdin := stdio.Stdin().Listen(1024)
 	events := stdio.NewBufferedConsumer(func(buf []byte) (consumed int, complete bool) {
 		event, consumed := l.parseCapabilitiesEvent(buf)
 		if event != nil {

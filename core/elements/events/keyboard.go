@@ -3,10 +3,11 @@ package events
 import (
 	"bytes"
 	"context"
-	"github.com/loom-go/term/core/stdio"
-	"github.com/loom-go/term/core/sync"
 	"strconv"
 	"strings"
+
+	"github.com/loom-go/term/core/stdio"
+	"github.com/loom-go/term/core/sync"
 )
 
 // bracketed paste markers
@@ -42,7 +43,7 @@ func (l *KeyboardListener) ListenPaste(ctx context.Context) <-chan *EventPaste {
 }
 
 func (l *KeyboardListener) watch() {
-	stdin := stdio.Stdin.Listen(1024)
+	stdin := stdio.Stdin().Listen(1024)
 	events := stdio.NewBufferedConsumer(func(buf []byte) (consumed int, complete bool) {
 		if len(buf) == 0 {
 			return 0, false

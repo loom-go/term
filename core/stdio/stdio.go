@@ -4,4 +4,12 @@ import (
 	"os"
 )
 
-var Stdin = NewReader(os.Stdin)
+var stdin *Reader
+
+func Stdin() *Reader {
+	if stdin == nil {
+		stdin = NewReader(os.Stdin)
+	}
+
+	return stdin
+}
