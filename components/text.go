@@ -128,9 +128,7 @@ func (n *textNode) Update(slot *loom.Slot) error {
 	self := slot.Self().(core.TextElement)
 
 	return ctx.BatchRender(func() error {
-		if n.content != "" {
-			self.SetText(n.content)
-		}
+		self.SetText(n.content)
 
 		return slot.RenderChildren(n.children...)
 	})

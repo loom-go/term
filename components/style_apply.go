@@ -3,7 +3,7 @@ package components
 import (
 	"reflect"
 
-	"github.com/loom-go/loom/signals"
+	"github.com/loom-go/loom/components"
 	"github.com/loom-go/term/core"
 )
 
@@ -542,9 +542,9 @@ func unwrapAccessor[V any](value any) (v V, vok bool) {
 		value = sig()
 	} else if fn, ok := value.(func() any); ok {
 		value = fn()
-	} else if fn, ok := value.(signals.Accessor[V]); ok {
+	} else if fn, ok := value.(components.Accessor[V]); ok {
 		value = fn()
-	} else if fn, ok := value.(signals.Accessor[any]); ok {
+	} else if fn, ok := value.(components.Accessor[any]); ok {
 		value = fn()
 	} else {
 		// fallback to reflect for calling the accessor
