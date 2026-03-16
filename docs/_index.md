@@ -1,6 +1,6 @@
 ---
 title: "LOOM-TERM"
-weight: 2
+weight: 1
 cascade:
   type: docs
 ---
