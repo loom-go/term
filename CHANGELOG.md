@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/loom-go/term/compare/v0.1.0...v0.1.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* **text component:** not updating empty content ([9fa2d48](https://github.com/loom-go/term/commit/9fa2d48f55dc6290aa2279e2cfdcb0332935f0e4))
+
 ## [0.1.0](https://github.com/loom-go/term/compare/v0.1.0...v0.1.0) (2026-03-12)
 
 
