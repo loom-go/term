@@ -18,7 +18,7 @@ var (
 		AlignItems:      "center",
 		JustifyContent:  "center",
 		GapColumn:       4,
-		BackgroundColor: RGB(0, 0, 20),
+		BackgroundColor: RGB(0, 0, 40),
 	}
 
 	styleBox = Style{
