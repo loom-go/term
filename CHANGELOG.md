@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/loom-go/term/compare/v0.1.1...v0.1.2) (2026-03-27)
+
+
+### Miscellaneous Chores
+
+* update tess ([18a754d](https://github.com/loom-go/term/commit/18a754dd4f96d8f5d118a02b59790ae2a5886826))
+
 ## [0.1.1](https://github.com/loom-go/term/compare/v0.1.0...v0.1.1) (2026-03-16)
 
 
